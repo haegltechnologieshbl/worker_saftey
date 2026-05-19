@@ -15,7 +15,6 @@ SECRET_KEY = 'your-secret-key-here'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-gh auth login
 # Application definition
 INSTALLED_APPS = [
     'crispy_forms',
