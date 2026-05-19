@@ -1,0 +1,45 @@
+{% extends 'base_admin.html' %}
+{% block title %}Delete Violation #{{ violation.pk }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Delete Violation</h1>
+    <div class="breadcrumb-nav">
+        <a href="{% url 'violation_list' %}">Violations</a> / #{{ violation.pk }} / Delete
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>Are you sure you want to delete this violation?</strong>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                {% if violation.snapshot %}
+                    <img src="{{ violation.snapshot.url }}" style="width:100%;border-radius:6px;">
+                {% endif %}
+            </div>
+            <div class="col-md-8">
+                <p><strong>Type:</strong> <span class="badge badge-violation">{{ violation.violation_type }}</span></p>
+                <p><strong>When:</strong> {{ violation.timestamp|date:"M d, Y H:i:s" }}</p>
+                <p><strong>Confidence:</strong> {{ violation.confidence|floatformat:3 }}</p>
+                <p><strong>Employee:</strong>
+                    {% if violation.employee %}
+                        {{ violation.employee.first_name }} {{ violation.employee.last_name }} ({{ violation.employee.employee_id }})
+                    {% else %}
+                        Unknown
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Yes, Delete
+            </button>
+            <a href="{% url 'violation_detail' violation.pk %}" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

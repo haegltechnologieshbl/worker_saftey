@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}Live Safety Detection{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-camera-video"></i> Live Safety Detection
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Video Feed Section -->
+                        <div class="col-md-8">
+                            <div class="position-relative">
+                                <video id="webcam" autoplay playsinline class="img-fluid rounded" style="width: 100%; height: auto;"></video>
+                                <canvas id="overlay" class="position-absolute top-0 start-0" style="width: 100%; height: auto;"></canvas>
+                            </div>
+
+                            <div class="mt-3 d-flex gap-2 flex-wrap">
+                                <button id="startBtn" class="btn btn-success">
+                                    <i class="bi bi-play-fill"></i> Start Detection
+                                </button>
+                                <button id="stopBtn" class="btn btn-danger" disabled>
+                                    <i class="bi bi-stop-fill"></i> Stop Detection
+                                </button>
+                                <button id="captureBtn" class="btn btn-primary" disabled>
+                                    <i class="bi bi-camera"></i> Capture Frame
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Detection Results Section -->
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">Detection Results</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="detectionResults">
+                                        <p class="text-muted">Start detection to see results...</p>
+                                    </div>
+
+                                    <div id="alertBox" class="mt-3" style="display: none;">
+                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                            <strong>⚠️ Safety Alert!</strong>
+                                            <ul id="alertList" class="mb-0"></ul>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <h6>Statistics</h6>
+                                        <ul class="list-unstyled">
+                                            <li><strong>Frames Processed:</strong> <span id="frameCount">0</span></li>
+                                            <li><strong>Detections:</strong> <span id="detectionCount">0</span></li>
+                                            <li><strong>FPS:</strong> <span id="fpsCount">0</span></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card mt-3">
+                                <div class="card-header bg-warning">
+                                    <h6 class="mb-0">Detection Settings</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="confidence" class="form-label">Confidence Threshold</label>
+                                        <input type="range" class="form-range" id="confidence" min="0" max="100" value="50">
+                                        <span id="confidenceValue">50%</span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="interval" class="form-label">Detection Interval (ms)</label>
+                                        <input type="range" class="form-range" id="interval" min="100" max="2000" value="500" step="100">
+                                        <span id="intervalValue">500ms</span>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showBoxes" checked>
+                                        <label class="form-check-label" for="showBoxes">
+                                            Show Bounding Boxes
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="card mt-3">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0">Instructions</h6>
+                </div>
+                <div class="card-body">
+                    <ol>
+                        <li>Click <strong>"Start Detection"</strong> to begin webcam monitoring</li>
+                        <li>The system will detect workers without required Personal Protective Equipment (PPE):
+                            <ul>
+                                <li>⛑️ No Safety Helmet</li>
+                                <li>🦺 No Safety Vest/Jacket</li>
+                                <li>😷 No Safety Mask</li>
+                                <li>⚠️ No Protective Equipment</li>
+                            </ul>
+                        </li>
+                        <li>Adjust confidence threshold and detection interval as needed</li>
+                        <li>Click <strong>"Capture Frame"</strong> to save current frame with detections</li>
+                        <li>Click <strong>"Stop Detection"</strong> to end monitoring</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#overlay {
+    pointer-events: none;
+    z-index: 10;
+}
+
+.detection-box {
+    position: absolute;
+    border: 3px solid;
+    border-radius: 4px;
+}
+
+.detection-no-helmet {
+    border-color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.detection-no-jacket {
+    border-color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.detection-label {
+    position: absolute;
+    top: -25px;
+    left: 0;
+    padding: 2px 8px;
+    border-radius: 4px 4px 0 0;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    white-space: nowrap;
+}
+
+.detection-item {
+    border-left: 4px solid #ffc107;
+    transition: all 0.3s ease;
+}
+
+.detection-item:hover {
+    background-color: #fff3cd !important;
+    transform: translateX(5px);
+}
+
+.alert-bordered {
+    border-left: 4px solid #ffc107;
+}
+</style>
+
+<script>
+let videoStream = null;
+let detectionInterval = null;
+let frameCount = 0;
+let detectionCount = 0;
+let startTime = null;
+
+const video = document.getElementById('webcam');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const captureBtn = document.getElementById('captureBtn');
+const confidenceSlider = document.getElementById('confidence');
+const confidenceValue = document.getElementById('confidenceValue');
+const intervalSlider = document.getElementById('interval');
+const intervalValue = document.getElementById('intervalValue');
+const showBoxesCheckbox = document.getElementById('showBoxes');
+
+// Update slider values
+confidenceSlider.addEventListener('input', () => {
+    confidenceValue.textContent = confidenceSlider.value + '%';
+});
+
+intervalSlider.addEventListener('input', () => {
+    intervalValue.textContent = intervalSlider.value + 'ms';
+});
+
+// Start webcam
+startBtn.addEventListener('click', async () => {
+    try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        });
+
+        video.srcObject = videoStream;
+
+        video.onloadedmetadata = () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            startDetection();
+        };
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        captureBtn.disabled = false;
+
+    } catch (err) {
+        console.error('Error accessing webcam:', err);
+        alert('Failed to access webcam. Please ensure you have granted camera permissions.');
+    }
+});
+
+// Stop webcam
+stopBtn.addEventListener('click', () => {
+    stopDetection();
+});
+
+// Capture frame
+captureBtn.addEventListener('click', () => {
+    captureFrame();
+});
+
+function startDetection() {
+    frameCount = 0;
+    detectionCount = 0;
+    startTime = Date.now();
+
+    const interval = parseInt(intervalSlider.value);
+    detectionInterval = setInterval(processFrame, interval);
+}
+
+function stopDetection() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+    }
+
+    if (detectionInterval) {
+        clearInterval(detectionInterval);
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    captureBtn.disabled = true;
+
+    document.getElementById('detectionResults').innerHTML =
+        '<p class="text-muted">Detection stopped.</p>';
+    document.getElementById('alertBox').style.display = 'none';
+}
+
+async function processFrame() {
+    if (!video.videoWidth) return;
+
+    frameCount++;
+
+    // Capture frame
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = video.videoWidth;
+    tempCanvas.height = video.videoHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(video, 0, 0);
+
+    // Convert to base64
+    const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
+
+    try {
+        // Send to backend for detection
+        const response = await fetch('/live-detect/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                image: imageData,
+                confidence: parseInt(confidenceSlider.value) / 100
+            })
+        });
+
+        const result = await response.json();
+
+        // Clear previous drawings
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw detections
+        if (result.detections && result.detections.length > 0) {
+            detectionCount += result.detections.length;
+            drawDetections(result.detections);
+            updateResults(result.detections);
+            checkAlerts(result.detections);
+        } else {
+            document.getElementById('detectionResults').innerHTML =
+                '<p class="text-success">✅ No safety violations detected</p>';
+            document.getElementById('alertBox').style.display = 'none';
+        }
+
+        updateStats();
+
+    } catch (error) {
+        console.error('Detection error:', error);
+    }
+}
+
+function drawDetections(detections) {
+    if (!showBoxesCheckbox.checked) return;
+
+    detections.forEach(detection => {
+        const { x, y, width, height, label, confidence } = detection;
+
+        // Determine box color based on label
+        let boxClass = 'detection-no-helmet';
+        let borderColor = '#dc3545';
+
+        if (label.toLowerCase().includes('jacket')) {
+            boxClass = 'detection-no-jacket';
+            borderColor = '#ffc107';
+        }
+
+        // Draw bounding box
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, width, height);
+
+        // Draw label background
+        // Remove emojis from label for canvas display
+        const cleanLabel = label.replace(/[^\x00-\x7F]/g, '').trim();
+        const labelText = `${cleanLabel} ${(confidence * 100).toFixed(1)}%`;
+        ctx.font = 'bold 14px Arial';
+        const textWidth = ctx.measureText(labelText).width;
+
+        ctx.fillStyle = borderColor;
+        ctx.fillRect(x, y - 25, textWidth + 16, 25);
+
+        // Draw label text
+        ctx.fillStyle = 'white';
+        ctx.fillText(labelText, x + 8, y - 7);
+    });
+}
+
+function updateResults(detections) {
+    const resultsDiv = document.getElementById('detectionResults');
+    let html = '<div class="alert alert-warning alert-bordered">';
+
+    detections.forEach(det => {
+        const confidence = (det.confidence * 100).toFixed(1);
+        let icon = '⚠️';
+
+        if (det.label.toLowerCase().includes('helmet')) {
+            icon = '⛑️';
+        } else if (det.label.toLowerCase().includes('vest') || det.label.toLowerCase().includes('jacket')) {
+            icon = '🦺';
+        } else if (det.label.toLowerCase().includes('mask')) {
+            icon = '😷';
+        } else if (det.label.toLowerCase().includes('protective') || det.label.toLowerCase().includes('equipment')) {
+            icon = '⚠️';
+        }
+
+        const confidenceColor = confidence >= 80 ? 'success' : confidence >= 60 ? 'warning' : 'danger';
+
+        html += `
+            <div class="detection-item mb-2 p-2 bg-light rounded">
+                <div class="d-flex align-items-center">
+                    <span class="fs-4 me-2">${icon}</span>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0 fw-bold">${det.label}</h6>
+                        <small class="text-muted">Confidence: <span class="text-${confidenceColor} fw-bold">${confidence}%</span></small>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    resultsDiv.innerHTML = html;
+}
+
+function checkAlerts(detections) {
+    const alertBox = document.getElementById('alertBox');
+    const alertList = document.getElementById('alertList');
+
+    if (detections.length > 0) {
+        let alertHtml = '';
+        detections.forEach(det => {
+            let icon = '⚠️';
+            if (det.label.toLowerCase().includes('helmet')) icon = '⛑️';
+            else if (det.label.toLowerCase().includes('vest') || det.label.toLowerCase().includes('jacket')) icon = '🦺';
+            else if (det.label.toLowerCase().includes('mask')) icon = '😷';
+            else if (det.label.toLowerCase().includes('protective') || det.label.toLowerCase().includes('equipment')) icon = '⚠️';
+
+            alertHtml += `<li><strong>${icon}</strong> ${det.label} <small class="text-muted">(${(det.confidence * 100).toFixed(1)}%)</small></li>`;
+        });
+        alertList.innerHTML = alertHtml;
+        alertBox.style.display = 'block';
+    } else {
+        alertBox.style.display = 'none';
+    }
+}
+
+function updateStats() {
+    document.getElementById('frameCount').textContent = frameCount;
+    document.getElementById('detectionCount').textContent = detectionCount;
+
+    if (startTime) {
+        const elapsed = (Date.now() - startTime) / 1000;
+        const fps = Math.round(frameCount / elapsed);
+        document.getElementById('fpsCount').textContent = fps;
+    }
+}
+
+function captureFrame() {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = video.videoWidth;
+    tempCanvas.height = video.videoHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Draw video frame
+    tempCtx.drawImage(video, 0, 0);
+
+    // Draw overlay
+    tempCtx.drawImage(canvas, 0, 0);
+
+    // Download image
+    const link = document.createElement('a');
+    link.download = `safety_detection_${Date.now()}.png`;
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+}
+
+function getCsrfToken() {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+            return decodeURIComponent(value);
+        }
+    }
+    return '';
+}
+</script>
+{% endblock %}

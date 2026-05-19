@@ -1,0 +1,52 @@
+{% extends 'base_admin.html' %}
+{% block title %}Compliance Leaderboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Compliance Leaderboard</h1>
+        <div class="breadcrumb-nav">Employees ranked by total violations (most → least)</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-clean mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Employee</th>
+                    <th>ID</th>
+                    <th>Department</th>
+                    <th class="text-end">Violations</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for emp in ranking %}
+                <tr>
+                    <td><strong>{{ forloop.counter }}</strong></td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if emp.photo %}
+                                <img src="{{ emp.photo.url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                            {% endif %}
+                            <a href="{% url 'employee_detail' emp.pk %}">{{ emp.first_name }} {{ emp.last_name }}</a>
+                        </div>
+                    </td>
+                    <td>{{ emp.employee_id }}</td>
+                    <td>{{ emp.department|default:"-" }}</td>
+                    <td class="text-end">
+                        {% if emp.vc > 0 %}
+                            <span class="badge badge-violation" style="font-size:0.95rem;">{{ emp.vc }}</span>
+                        {% else %}
+                            <span class="text-success"><i class="bi bi-check-circle"></i> 0</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="text-center py-5 text-muted">No employees yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

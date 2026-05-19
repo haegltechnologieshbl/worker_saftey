@@ -1,0 +1,42 @@
+{% extends 'base_admin.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Processed Videos</h1>
+        <div class="breadcrumb-nav">Videos uploaded and processed by YOLO detection</div>
+    </div>
+    <a href="{% url 'video_upload1' %}" class="btn btn-admin">
+        <i class="bi bi-upload"></i> Upload New Video
+    </a>
+</div>
+
+{% for video in videos %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <h6 class="text-muted mb-2">Original</h6>
+                <video controls style="width:100%;border-radius:6px;">
+                    <source src="{{ video.uploaded_file.url }}" type="video/mp4">
+                </video>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted mb-2">Detected Output</h6>
+                <video controls style="width:100%;border-radius:6px;">
+                    <source src="{{ video.output_file.url }}" type="video/mp4">
+                </video>
+            </div>
+        </div>
+        <small class="text-muted d-block mt-2">Uploaded: {{ video.uploaded_at|date:"M d, Y H:i" }}</small>
+    </div>
+</div>
+{% empty %}
+<div class="card">
+    <div class="card-body text-center py-5 text-muted">
+        No videos have been processed yet.
+        <br><a href="{% url 'video_upload1' %}" class="btn btn-admin mt-3">Upload First Video</a>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

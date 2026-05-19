@@ -1,0 +1,701 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}Login - SafeGuard AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: #F0F2F5 !important;
+    }
+
+    .login-wrapper {
+        min-height: calc(100vh - 64px);
+        background: linear-gradient(160deg, #0F1B2D 0%, #162544 40%, #1a3355 100%);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        margin-top: -64px;
+        padding-top: 64px;
+    }
+
+    /* Hazard stripe top */
+    .login-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 64px;
+        left: 0;
+        right: 0;
+        height: 8px;
+        background: repeating-linear-gradient(
+            -45deg,
+            #FFD600,
+            #FFD600 20px,
+            #0F1B2D 20px,
+            #0F1B2D 40px
+        );
+        z-index: 2;
+    }
+
+    /* Grid pattern */
+    .login-grid-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.04;
+        background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23FFD600' stroke-width='1'%3E%3Cpath d='M0 0h80v80H0z'/%3E%3Cpath d='M0 40h80M40 0v80'/%3E%3Ccircle cx='40' cy='40' r='20'/%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    /* Floating safety icons decoration */
+    .floating-icons {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: hidden;
+    }
+
+    .floating-icon {
+        position: absolute;
+        color: rgba(255, 214, 0, 0.06);
+        font-size: 4rem;
+        animation: floatIcon 20s infinite linear;
+    }
+
+    .floating-icon:nth-child(1) { top: 15%; left: 5%; animation-delay: 0s; font-size: 3rem; }
+    .floating-icon:nth-child(2) { top: 60%; left: 10%; animation-delay: -5s; font-size: 5rem; }
+    .floating-icon:nth-child(3) { top: 25%; right: 8%; animation-delay: -10s; font-size: 4rem; }
+    .floating-icon:nth-child(4) { top: 70%; right: 15%; animation-delay: -15s; font-size: 3.5rem; }
+    .floating-icon:nth-child(5) { top: 45%; left: 25%; animation-delay: -8s; font-size: 2.5rem; }
+    .floating-icon:nth-child(6) { top: 80%; left: 50%; animation-delay: -12s; font-size: 3rem; }
+
+    @keyframes floatIcon {
+        0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.06; }
+        25% { transform: translateY(-20px) rotate(5deg); opacity: 0.1; }
+        50% { transform: translateY(-10px) rotate(-3deg); opacity: 0.06; }
+        75% { transform: translateY(-25px) rotate(3deg); opacity: 0.08; }
+    }
+
+    /* Glow orbs */
+    .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        pointer-events: none;
+    }
+
+    .glow-orb.orange {
+        width: 300px;
+        height: 300px;
+        background: rgba(255, 107, 0, 0.08);
+        top: 20%;
+        right: 10%;
+    }
+
+    .glow-orb.yellow {
+        width: 250px;
+        height: 250px;
+        background: rgba(255, 214, 0, 0.05);
+        bottom: 15%;
+        left: 10%;
+    }
+
+    .login-card {
+        background: rgba(255, 255, 255, 0.97);
+        border-radius: 20px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transform: translateY(0);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        overflow: hidden;
+        position: relative;
+        z-index: 3;
+        max-width: 440px;
+        margin: 0 auto;
+    }
+
+    .login-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+    }
+
+    .login-header {
+        background: linear-gradient(135deg, #0F1B2D 0%, #1a3355 100%);
+        padding: 30px 30px 25px;
+        position: relative;
+        overflow: hidden;
+        text-align: center;
+    }
+
+    .login-header::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: repeating-linear-gradient(
+            -45deg,
+            #FFD600,
+            #FFD600 12px,
+            transparent 12px,
+            transparent 24px
+        );
+    }
+
+    .login-header::after {
+        content: '';
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 120px;
+        height: 120px;
+        background: rgba(255, 107, 0, 0.1);
+        border-radius: 50%;
+    }
+
+    .login-icon-wrapper {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #FF6B00, #FFD600);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 15px;
+        box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
+    }
+
+    .login-icon-wrapper i {
+        font-size: 1.6rem;
+        color: white;
+    }
+
+    .login-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+        color: white;
+        letter-spacing: -0.02em;
+    }
+
+    .login-subtitle {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.5);
+        margin: 6px 0 0;
+        font-weight: 400;
+    }
+
+    .login-body {
+        padding: 35px 30px 30px;
+    }
+
+    .input-group-wrapper {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #adb5bd;
+        font-size: 1.1rem;
+        transition: color 0.3s ease;
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .form-control {
+        border-radius: 12px;
+        padding: 14px 16px 14px 46px;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .form-control::placeholder {
+        color: #adb5bd;
+        font-weight: 400;
+    }
+
+    .form-control:focus {
+        border-color: #FF6B00;
+        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
+        background: white;
+    }
+
+    .form-control:focus + .input-icon,
+    .form-control:focus ~ .input-icon {
+        color: #FF6B00;
+    }
+
+    .input-group-wrapper:focus-within .input-icon {
+        color: #FF6B00;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        display: block;
+    }
+
+    .btn-login {
+        background: linear-gradient(135deg, #FF6B00 0%, #E85D00 100%);
+        border: none;
+        border-radius: 12px;
+        padding: 15px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        width: 100%;
+        margin-top: 10px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+    }
+
+    .btn-login::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .btn-login:hover {
+        background: linear-gradient(135deg, #E85D00 0%, #CC5200 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
+        color: white;
+    }
+
+    .btn-login:hover::before {
+        left: 100%;
+    }
+
+    .btn-login:active {
+        transform: translateY(0);
+    }
+
+    .divider {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin: 25px 0;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e9ecef;
+    }
+
+    .divider span {
+        color: #adb5bd;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .register-link {
+        color: #FF6B00;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+
+    .register-link:hover {
+        color: #E85D00;
+        text-decoration: underline;
+    }
+
+    .safety-note {
+        background: #FFF8F0;
+        border: 1px solid #FFE0B2;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-top: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .safety-note i {
+        color: #FF6B00;
+        font-size: 1.1rem;
+        margin-top: 1px;
+        flex-shrink: 0;
+    }
+
+    .safety-note p {
+        font-size: 0.8rem;
+        color: #8B6914;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .login-tabs {
+        display: flex;
+        gap: 8px;
+        background: #f1f3f5;
+        border-radius: 12px;
+        padding: 5px;
+        margin-bottom: 24px;
+    }
+
+    .login-tab {
+        flex: 1;
+        border: none;
+        background: transparent;
+        border-radius: 9px;
+        padding: 10px 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        transition: all 0.25s ease;
+    }
+
+    .login-tab.active {
+        background: linear-gradient(135deg, #FF6B00 0%, #E85D00 100%);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+    }
+
+    .login-alert {
+        border-radius: 10px;
+        border: none;
+        padding: 12px 16px;
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .login-alert i {
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 575.98px) {
+        .login-wrapper {
+            padding-top: 72px;
+        }
+
+        .login-card {
+            margin: 0 15px;
+            border-radius: 16px;
+        }
+
+        .login-body {
+            padding: 25px 20px 20px;
+        }
+
+        .login-header {
+            padding: 25px 20px 20px;
+        }
+
+        .floating-icon {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+    <!-- Background decorations -->
+    <div class="login-grid-pattern"></div>
+    <div class="floating-icons">
+        <i class="bi bi-shield-check floating-icon"></i>
+        <i class="bi bi-hardhat floating-icon"></i>
+        <i class="bi bi-exclamation-triangle floating-icon"></i>
+        <i class="bi bi-broadcast-pin floating-icon"></i>
+        <i class="bi bi-person-badge floating-icon"></i>
+        <i class="bi bi-camera-video floating-icon"></i>
+    </div>
+    <div class="glow-orb orange"></div>
+    <div class="glow-orb yellow"></div>
+
+    <!-- Login Card -->
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-11 col-sm-9 col-md-7 col-lg-5">
+                <div class="login-card animate-in">
+                    <div class="login-header">
+                        <div class="login-icon-wrapper">
+                            <i class="bi bi-shield-lock"></i>
+                        </div>
+                        <h5 class="login-title">Secure Login</h5>
+                        <p class="login-subtitle">Access your safety monitoring dashboard</p>
+                    </div>
+
+                    <div class="login-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} login-alert alert-dismissible fade show" role="alert">
+                                    {% if message.tags == 'success' %}
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    {% elif message.tags == 'danger' %}
+                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                    {% elif message.tags == 'warning' %}
+                                        <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                                    {% else %}
+                                        <i class="bi bi-info-circle-fill text-info"></i>
+                                    {% endif %}
+                                    <span>{{ message }}</span>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <!-- Login type switcher -->
+                        <div class="login-tabs">
+                            <button type="button" class="login-tab active" id="tabAdmin"
+                                    onclick="switchTab('admin')">
+                                <i class="bi bi-person-gear"></i> Admin
+                            </button>
+                            <button type="button" class="login-tab" id="tabEmployee"
+                                    onclick="switchTab('employee')">
+                                <i class="bi bi-person-badge"></i> Employee
+                            </button>
+                        </div>
+
+                        <!-- Admin: username + password -->
+                        <form method="post" class="login-form" id="adminForm">
+                            {% csrf_token %}
+                            <input type="hidden" name="login_type" value="admin">
+
+                            <div class="input-group-wrapper">
+                                <label class="form-label">Username</label>
+                                <input type="text" name="username" class="form-control" placeholder="Enter your username" required autocomplete="username">
+                                <i class="bi bi-person input-icon"></i>
+                            </div>
+
+                            <div class="input-group-wrapper">
+                                <label class="form-label">Password</label>
+                                <input type="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password" id="passwordInput">
+                                <i class="bi bi-lock input-icon" id="lockIcon"></i>
+                                <button type="button" class="btn btn-sm position-absolute"
+                                        style="right: 12px; top: 50%; transform: translateY(-50%); z-index: 3; background: none; border: none; color: #adb5bd; padding: 4px 8px;"
+                                        onclick="togglePassword()" id="toggleBtn">
+                                    <i class="bi bi-eye" id="eyeIcon"></i>
+                                </button>
+                            </div>
+
+                            <div class="text-end" style="margin-top:-8px; margin-bottom:14px;">
+                                <a href="{% url 'forgot_password' %}" class="register-link" style="font-size:0.85rem;">
+                                    Forgot password?
+                                </a>
+                            </div>
+
+                            <button type="submit" class="btn btn-login text-white">
+                                <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
+                            </button>
+                        </form>
+
+                        <!-- Employee: username+password OR phone -> SMS OTP -->
+                        <div id="employeeForm" style="display:none;">
+
+                            <!-- Method switcher -->
+                            <div class="login-tabs" style="margin-bottom:20px;">
+                                <button type="button" class="login-tab active" id="tabEmpPassword"
+                                        onclick="switchEmpMethod('password')">
+                                    <i class="bi bi-key"></i> Password
+                                </button>
+                                <button type="button" class="login-tab" id="tabEmpOtp"
+                                        onclick="switchEmpMethod('otp')">
+                                    <i class="bi bi-chat-dots"></i> OTP
+                                </button>
+                            </div>
+
+                            <!-- Employee: username + password -->
+                            <form method="post" class="login-form" id="empPasswordForm">
+                                {% csrf_token %}
+                                <input type="hidden" name="login_type" value="employee">
+                                <input type="hidden" name="emp_method" value="password">
+
+                                <div class="input-group-wrapper">
+                                    <label class="form-label">Username</label>
+                                    <input type="text" name="username" class="form-control" placeholder="Enter your username" autocomplete="username">
+                                    <i class="bi bi-person input-icon"></i>
+                                </div>
+
+                                <div class="input-group-wrapper">
+                                    <label class="form-label">Password</label>
+                                    <input type="password" name="password" class="form-control" placeholder="Enter your password" autocomplete="current-password" id="empPasswordInput">
+                                    <i class="bi bi-lock input-icon"></i>
+                                    <button type="button" class="btn btn-sm position-absolute"
+                                            style="right: 12px; top: 50%; transform: translateY(-50%); z-index: 3; background: none; border: none; color: #adb5bd; padding: 4px 8px;"
+                                            onclick="toggleEmpPassword()">
+                                        <i class="bi bi-eye" id="empEyeIcon"></i>
+                                    </button>
+                                </div>
+
+                                <div class="text-end" style="margin-top:-8px; margin-bottom:14px;">
+                                    <a href="{% url 'forgot_password' %}" class="register-link" style="font-size:0.85rem;">
+                                        Forgot password?
+                                    </a>
+                                </div>
+
+                                <button type="submit" class="btn btn-login text-white">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
+                                </button>
+                            </form>
+
+                            <!-- Employee: phone number -> SMS OTP -->
+                            <form method="post" class="login-form" id="empOtpForm" style="display:none;">
+                                {% csrf_token %}
+                                <input type="hidden" name="login_type" value="employee">
+                                <input type="hidden" name="emp_method" value="otp">
+
+                                <div class="input-group-wrapper">
+                                    <label class="form-label">Phone Number</label>
+                                    <input type="tel" name="phone" class="form-control" placeholder="Registered phone number" autocomplete="tel">
+                                    <i class="bi bi-phone input-icon"></i>
+                                </div>
+
+                                <div class="safety-note" style="margin-top:0; margin-bottom:14px;">
+                                    <i class="bi bi-shield-lock"></i>
+                                    <p>We'll send a one-time password (OTP) to this number by SMS to log you in.</p>
+                                </div>
+
+                                <div class="text-end" style="margin-top:-2px; margin-bottom:14px;">
+                                    <a href="{% url 'forgot_password' %}" class="register-link" style="font-size:0.85rem;">
+                                        Forgot password?
+                                    </a>
+                                </div>
+
+                                <button type="submit" class="btn btn-login text-white">
+                                    <i class="bi bi-chat-dots me-2"></i> Send OTP
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="safety-note">
+                            <i class="bi bi-info-circle"></i>
+                            <p>Authorized personnel only. All login attempts are monitored and logged for security compliance purposes.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function switchTab(type) {
+        const adminForm = document.getElementById('adminForm');
+        const employeeForm = document.getElementById('employeeForm');
+        const tabAdmin = document.getElementById('tabAdmin');
+        const tabEmployee = document.getElementById('tabEmployee');
+
+        if (type === 'employee') {
+            adminForm.style.display = 'none';
+            employeeForm.style.display = 'block';
+            tabEmployee.classList.add('active');
+            tabAdmin.classList.remove('active');
+        } else {
+            employeeForm.style.display = 'none';
+            adminForm.style.display = 'block';
+            tabAdmin.classList.add('active');
+            tabEmployee.classList.remove('active');
+        }
+    }
+
+    function switchEmpMethod(method) {
+        const pwForm = document.getElementById('empPasswordForm');
+        const otpForm = document.getElementById('empOtpForm');
+        const tabPw = document.getElementById('tabEmpPassword');
+        const tabOtp = document.getElementById('tabEmpOtp');
+
+        if (method === 'otp') {
+            pwForm.style.display = 'none';
+            otpForm.style.display = 'block';
+            tabOtp.classList.add('active');
+            tabPw.classList.remove('active');
+        } else {
+            otpForm.style.display = 'none';
+            pwForm.style.display = 'block';
+            tabPw.classList.add('active');
+            tabOtp.classList.remove('active');
+        }
+    }
+
+    function toggleEmpPassword() {
+        const inp = document.getElementById('empPasswordInput');
+        const eye = document.getElementById('empEyeIcon');
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            eye.classList.remove('bi-eye');
+            eye.classList.add('bi-eye-slash');
+        } else {
+            inp.type = 'password';
+            eye.classList.remove('bi-eye-slash');
+            eye.classList.add('bi-eye');
+        }
+    }
+
+    function togglePassword() {
+        const passwordInput = document.getElementById('passwordInput');
+        const eyeIcon = document.getElementById('eyeIcon');
+        const lockIcon = document.getElementById('lockIcon');
+
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.classList.remove('bi-eye');
+            eyeIcon.classList.add('bi-eye-slash');
+            lockIcon.classList.remove('bi-lock');
+            lockIcon.classList.add('bi-unlock');
+        } else {
+            passwordInput.type = 'password';
+            eyeIcon.classList.remove('bi-eye-slash');
+            eyeIcon.classList.add('bi-eye');
+            lockIcon.classList.remove('bi-unlock');
+            lockIcon.classList.add('bi-lock');
+        }
+    }
+
+    // Entrance animation
+    document.addEventListener('DOMContentLoaded', function() {
+        const card = document.querySelector('.login-card');
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 100);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends 'base_admin.html' %}
+{% block title %}{% if mode == 'add' %}Add Employee{% else %}Edit Employee{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% if mode == 'add' %}Add Employee{% else %}Edit {{ employee.username }}{% endif %}</h1>
+        <div class="breadcrumb-nav">
+            <a href="{% url 'employee_list' %}">Employees</a> /
+            {% if mode == 'add' %}New{% else %}Edit{% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="row g-3">
+                {% for field in form %}
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small class="text-muted d-block">{{ field.help_text }}</small>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors|striptags }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if mode == 'edit' and employee.photo %}
+            <div class="mt-3">
+                <label class="form-label fw-semibold">Current Photo</label><br>
+                <img src="{{ employee.photo.url }}" style="width:120px;height:120px;border-radius:8px;object-fit:cover;">
+                {% if employee.face_encoding %}
+                    <span class="badge bg-success ms-2">Face encoded</span>
+                {% else %}
+                    <span class="badge bg-warning ms-2">No face detected</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-admin">
+                    <i class="bi bi-check-circle"></i> {% if mode == 'add' %}Create Employee{% else %}Save Changes{% endif %}
+                </button>
+                <a href="{% url 'employee_list' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if mode == 'add' %}
+<div class="alert alert-info mt-3">
+    <i class="bi bi-info-circle"></i>
+    <strong>How this works:</strong>
+    <ul class="mb-0 mt-2">
+        <li>Username and password become the employee's login credentials. Give them in person.</li>
+        <li><strong>Photo:</strong> used as the employee's display picture.</li>
+        <li><strong>Enrollment video (recommended):</strong> a 5-15 second clip of the employee
+            slowly turning their head left, right, up, and down. The system extracts
+            multiple face encodings from different angles for much better matching.</li>
+        <li>You can provide either the photo or the video — but the video gives far better results.</li>
+    </ul>
+</div>
+{% endif %}
+{% endblock %}

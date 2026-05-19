@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SafeGuard AI - Worker Safety Detection{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --safety-orange: #FF6B00;
+            --safety-yellow: #FFD600;
+            --safety-dark: #0F1B2D;
+            --safety-blue: #162544;
+            --safety-red: #DC3545;
+            --safety-green: #28A745;
+            --nav-height: 64px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            padding-top: var(--nav-height);
+            background-color: #F0F2F5;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ========== NAVBAR ========== */
+        .navbar {
+            height: var(--nav-height);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, var(--safety-dark) 0%, var(--safety-blue) 100%) !important;
+            border-bottom: 3px solid var(--safety-orange);
+            padding: 0;
+            z-index: 1050;
+        }
+
+        .navbar .container {
+            height: 100%;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: white !important;
+            letter-spacing: -0.02em;
+            padding: 0;
+            text-decoration: none;
+        }
+
+        .navbar-brand .brand-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--safety-orange), var(--safety-yellow));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .navbar-brand .brand-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.1;
+        }
+
+        .navbar-brand .brand-text small {
+            font-size: 0.65rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .navbar-toggler {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-toggler:hover {
+            border-color: var(--safety-orange);
+            background: rgba(255, 107, 0, 0.1);
+        }
+
+        .navbar-toggler-icon {
+            filter: brightness(0) invert(1);
+        }
+
+        .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.7) !important;
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 8px 14px !important;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin: 0 2px;
+            position: relative;
+        }
+
+        .navbar-nav .nav-link i {
+            font-size: 1rem;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .navbar-nav .nav-link:hover,
+        .navbar-nav .nav-link.active {
+            color: white !important;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .navbar-nav .nav-link:hover i,
+        .navbar-nav .nav-link.active i {
+            opacity: 1;
+        }
+
+        .navbar-nav .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background: var(--safety-orange);
+            border-radius: 2px;
+        }
+
+        /* Live Detection special styling */
+        .nav-link.live-link {
+            color: var(--safety-yellow) !important;
+            position: relative;
+        }
+
+        .nav-link.live-link .live-pulse {
+            width: 7px;
+            height: 7px;
+            background: var(--safety-red);
+            border-radius: 50%;
+            display: inline-block;
+            animation: livePulse 1.5s infinite;
+        }
+
+        @keyframes livePulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.8); }
+            70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        .nav-link.live-link:hover {
+            background: rgba(255, 214, 0, 0.1) !important;
+            color: var(--safety-yellow) !important;
+        }
+
+        /* Dropdown */
+        .navbar-nav .dropdown-toggle::after {
+            display: none;
+        }
+
+        .navbar-nav .dropdown-toggle .dropdown-arrow {
+            font-size: 0.6rem;
+            margin-left: 2px;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-nav .dropdown.show .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            padding: 8px;
+            margin-top: 8px !important;
+            background: white;
+            animation: dropdownFade 0.2s ease;
+        }
+
+        @keyframes dropdownFade {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-item {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-item i {
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .dropdown-item:hover {
+            background-color: #FFF3E0;
+            color: var(--safety-orange);
+        }
+
+        .dropdown-item:hover i {
+            color: var(--safety-orange);
+        }
+
+        .dropdown-item.text-danger:hover {
+            background-color: #f8d7da;
+            color: var(--safety-red) !important;
+        }
+
+        .dropdown-item.text-danger:hover i {
+            color: var(--safety-red) !important;
+        }
+
+        .dropdown-divider {
+            margin: 6px 8px;
+            border-color: #f0f0f0;
+        }
+
+        .dropdown-header {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #adb5bd;
+            padding: 8px 14px 4px;
+        }
+
+        /* User avatar in dropdown */
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--safety-orange), var(--safety-yellow));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .nav-user-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.8) !important;
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 6px 12px !important;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .nav-user-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: white !important;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-user-btn .user-info {
+            text-align: left;
+            line-height: 1.2;
+        }
+
+        .nav-user-btn .user-info small {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: 400;
+        }
+
+        /* ========== MAIN CONTENT ========== */
+        main {
+            min-height: calc(100vh - var(--nav-height) - 120px);
+        }
+
+        /* ========== CARDS ========== */
+        .card {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 14px;
+            margin-bottom: 24px;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            border-bottom: 1px solid #f0f0f0;
+            background: white;
+            font-weight: 600;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-header i {
+            color: var(--safety-orange);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* ========== PROFILE ========== */
+        .profile-picture {
+            width: 130px;
+            height: 130px;
+            object-fit: cover;
+            border-radius: 16px;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        /* ========== ACTIVITY ICONS ========== */
+        .activity-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        /* ========== TABLES ========== */
+        .sensor-data-table th {
+            background-color: #F8F9FA;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #6c757d;
+            border-bottom: 2px solid #e9ecef;
+            padding: 12px 16px;
+        }
+
+        .sensor-data-table td {
+            padding: 12px 16px;
+            vertical-align: middle;
+            font-size: 0.9rem;
+        }
+
+        .sensor-data-table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        .sensor-data-table tbody tr:hover {
+            background-color: #FFF8F0;
+        }
+
+        /* ========== ALERTS / MESSAGES ========== */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 14px 18px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .alert i {
+            font-size: 1.2rem;
+            margin-top: 1px;
+            flex-shrink: 0;
+        }
+
+        .alert-success {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .alert-danger {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .alert-warning {
+            background: #FFF8E1;
+            color: #F57F17;
+        }
+
+        .alert-info {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+
+        .alert .btn-close {
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        /* ========== BUTTONS ========== */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--safety-orange), #E85D00);
+            border: none;
+            font-weight: 600;
+            border-radius: 10px;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(255, 107, 0, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #E85D00, #CC5200);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4);
+        }
+
+        .btn-outline-primary {
+            color: var(--safety-orange);
+            border-color: var(--safety-orange);
+            border-width: 2px;
+            font-weight: 600;
+            border-radius: 10px;
+            padding: 9px 20px;
+            transition: all 0.3s ease;
+            background: transparent;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--safety-orange);
+            border-color: var(--safety-orange);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--safety-red), #C82333);
+            border: none;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--safety-green), #218838);
+            border: none;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        /* ========== FOOTER ========== */
+        .site-footer {
+            background: linear-gradient(135deg, var(--safety-dark) 0%, var(--safety-blue) 100%);
+            color: rgba(255, 255, 255, 0.6);
+            padding: 0;
+            margin-top: auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .site-footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: repeating-linear-gradient(
+                -45deg,
+                var(--safety-yellow),
+                var(--safety-yellow) 15px,
+                var(--safety-dark) 15px,
+                var(--safety-dark) 30px
+            );
+        }
+
+        .footer-main {
+            padding: 40px 0 30px;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-weight: 800;
+            font-size: 1.15rem;
+            text-decoration: none;
+            margin-bottom: 12px;
+        }
+
+        .footer-brand .brand-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--safety-orange), var(--safety-yellow));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .footer-desc {
+            font-size: 0.85rem;
+            line-height: 1.7;
+            max-width: 320px;
+        }
+
+        .footer-heading {
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 18px;
+            position: relative;
+            padding-bottom: 10px;
+        }
+
+        .footer-heading::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 30px;
+            height: 2px;
+            background: var(--safety-orange);
+            border-radius: 1px;
+        }
+
+        .footer-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 10px;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-links a:hover {
+            color: var(--safety-yellow);
+            transform: translateX(4px);
+        }
+
+        .footer-links a i {
+            font-size: 0.75rem;
+            opacity: 0.5;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 18px 0;
+            font-size: 0.8rem;
+        }
+
+        .footer-bottom a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-bottom a:hover {
+            color: var(--safety-yellow);
+        }
+
+        /* ========== BADGE STYLES ========== */
+        .badge-safe {
+            background: #E8F5E9;
+            color: #2E7D32;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 6px;
+        }
+
+        .badge-unsafe {
+            background: #FFEBEE;
+            color: #C62828;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 6px;
+        }
+
+        .badge-warning {
+            background: #FFF8E1;
+            color: #F57F17;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 6px;
+        }
+
+        /* ========== SCROLLBAR ========== */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f0f0f0;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c0c0c0;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 991.98px) {
+            .navbar-collapse {
+                background: var(--safety-dark);
+                border-radius: 12px;
+                padding: 12px;
+                margin-top: 10px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .navbar-nav .nav-link {
+                padding: 12px 14px !important;
+                margin: 2px 0;
+            }
+
+            .nav-user-btn .user-info {
+                display: none;
+            }
+
+            .footer-heading {
+                margin-top: 24px;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .navbar-brand .brand-text small {
+                display: none;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <div class="brand-icon">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <div class="brand-text">
+                    SafeGuard AI
+                    <small>Worker Safety Detection</small>
+                </div>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home' %}">
+                            <i class="bi bi-grid-1x2"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'employee_dashboard' %}">
+                            <i class="bi bi-speedometer2"></i> My Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'my_violations' %}">
+                            <i class="bi bi-exclamation-triangle"></i> My Violations
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'profile' %}">
+                            <i class="bi bi-person-gear"></i> Profile
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link nav-user-btn dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <div class="user-avatar">
+                                {{ user.username|make_list|first|upper }}
+                            </div>
+                            <div class="user-info">
+                                {{ user.username }}
+                                <br><small>Safety Officer</small>
+                            </div>
+                            <i class="bi bi-chevron-down dropdown-arrow"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <div class="dropdown-header">Account</div>
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'profile' %}">
+                                <i class="bi bi-person"></i> My Profile
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{% url 'logout' %}" method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-box-arrow-right"></i> Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container py-4">
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {% if message.tags == 'success' %}
+                    <i class="bi bi-check-circle-fill"></i>
+                {% elif message.tags == 'danger' %}
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                {% else %}
+                    <i class="bi bi-info-circle-fill"></i>
+                {% endif %}
+                <span>{{ message }}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="footer-main">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-4 mb-4 mb-lg-0">
+                        <a href="{% url 'home' %}" class="footer-brand">
+                            <div class="brand-icon">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                            SafeGuard AI
+                        </a>
+                        <p class="footer-desc">
+                            AI-powered worker safety monitoring system. Real-time hazard detection, PPE compliance tracking, and automated safety reporting for modern workplaces.
+                        </p>
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <h6 class="footer-heading">Platform</h6>
+                        <ul class="footer-links">
+                            <li><a href="{% url 'home' %}"><i class="bi bi-chevron-right"></i> Home</a></li>
+                            {% if user.is_authenticated %}
+                            <li><a href="{% url 'profile' %}"><i class="bi bi-chevron-right"></i> Profile</a></li>
+                            <!-- <li><a href="{% url 'live_detection' %}"><i class="bi bi-chevron-right"></i> Live Detection</a></li>
+                            <li><a href="/video_lists/"><i class="bi bi-chevron-right"></i> Video Analysis</a></li> -->
+                            {% endif %}
+                        </ul>
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <h6 class="footer-heading">Detection</h6>
+                        <ul class="footer-links">
+                            <li><a href="#"><i class="bi bi-chevron-right"></i> Helmet Detection</a></li>
+                            <li><a href="#"><i class="bi bi-chevron-right"></i> Vest Detection</a></li>
+                            <li><a href="#"><i class="bi bi-chevron-right"></i> Fall Detection</a></li>
+                            <li><a href="#"><i class="bi bi-chevron-right"></i> Zone Monitoring</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-lg-4">
+                        <h6 class="footer-heading">Safety Compliance</h6>
+                        <ul class="footer-links">
+                            <li><a href="#"><i class="bi bi-chevron-right"></i> OSHA Standards</a></li>
+                            <li><a href="#"><i class="bi bi-chevron-right"></i> ISO 45001</a></li>
+                            <li><a href="#"><i class="bi bi-chevron-right"></i> Safety Audits</a></li>
+                            <li><a href="#"><i class="bi bi-chevron-right"></i> Reporting Tools</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container d-flex flex-wrap justify-content-between align-items-center">
+                <span>&copy; 2026 SafeGuard AI. All rights reserved.</span>
+                <div class="d-flex gap-3 mt-2 mt-md-0">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

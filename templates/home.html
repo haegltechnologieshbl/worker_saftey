@@ -1,0 +1,887 @@
+{% extends 'base.html' %}
+
+{% block title %}SafeGuard AI - Worker Safety Hazard Detection{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --safety-orange: #FF6B00;
+        --safety-yellow: #FFD600;
+        --safety-dark: #1B2A4A;
+        --safety-blue: #0A2647;
+        --safety-red: #DC3545;
+        --safety-green: #28A745;
+        --safety-gray: #6C757D;
+    }
+
+    body {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    .hero-section {
+        background: linear-gradient(135deg, var(--safety-dark) 0%, var(--safety-blue) 50%, #0d3b66 100%);
+        color: white;
+        border-radius: 20px;
+        overflow: hidden;
+        position: relative;
+        margin-top: 2rem;
+        box-shadow: 0 15px 40px rgba(26, 42, 74, 0.3);
+    }
+
+    .hero-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.05;
+        background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23FFD600' stroke-width='2'%3E%3Cpath d='M40 0v80M0 40h80'/%3E%3Ccircle cx='40' cy='40' r='15'/%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .hero-hazard-stripe {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 12px;
+        background: repeating-linear-gradient(
+            -45deg,
+            var(--safety-yellow),
+            var(--safety-yellow) 20px,
+            var(--safety-dark) 20px,
+            var(--safety-dark) 40px
+        );
+    }
+
+    .safety-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 107, 0, 0.15);
+        border: 1px solid rgba(255, 107, 0, 0.3);
+        color: var(--safety-yellow);
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+    .safety-badge .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--safety-green);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+    }
+
+    .feature-card {
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 1px solid #e9ecef;
+        background: white;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .feature-icon-wrapper {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.25rem;
+        position: relative;
+    }
+
+    .feature-icon-wrapper.orange {
+        background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+    }
+
+    .feature-icon-wrapper.blue {
+        background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    }
+
+    .feature-icon-wrapper.red {
+        background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+    }
+
+    .feature-icon-wrapper.green {
+        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    }
+
+    .feature-icon-wrapper.yellow {
+        background: linear-gradient(135deg, #FFFDE7 0%, #FFF9C4 100%);
+    }
+
+    .feature-icon-wrapper.purple {
+        background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%);
+    }
+
+    .feature-icon {
+        font-size: 2.2rem;
+    }
+
+    .feature-icon.orange { color: var(--safety-orange); }
+    .feature-icon.blue { color: #1976D2; }
+    .feature-icon.red { color: var(--safety-red); }
+    .feature-icon.green { color: var(--safety-green); }
+    .feature-icon.yellow { color: #F9A825; }
+    .feature-icon.purple { color: #7B1FA2; }
+
+    .stats-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+
+    .stats-card:hover {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transform: translateY(-5px);
+    }
+
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--safety-orange) 0%, var(--safety-yellow) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1.2;
+    }
+
+    .step-circle {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        position: relative;
+        z-index: 1;
+        font-weight: 700;
+        font-size: 1.5rem;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .step-circle.step-1 { background: linear-gradient(135deg, #FF6B00, #FF8F00); }
+    .step-circle.step-2 { background: linear-gradient(135deg, #1976D2, #42A5F5); }
+    .step-circle.step-3 { background: linear-gradient(135deg, #7B1FA2, #AB47BC); }
+    .step-circle.step-4 { background: linear-gradient(135deg, #2E7D32, #66BB6A); }
+
+    .step-item:hover .step-circle {
+        transform: scale(1.1);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .step-connector {
+        height: 3px;
+        background: linear-gradient(90deg, #FF6B00, #1976D2, #7B1FA2, #2E7D32);
+        position: absolute;
+        top: 35px;
+        width: calc(100% - 10%);
+        left: 5%;
+        z-index: 0;
+        opacity: 0.3;
+    }
+
+    .animate-in {
+        opacity: 0;
+        transform: translateY(30px);
+        animation: fadeInUp 0.7s ease forwards;
+    }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .delay-1 { animation-delay: 0.15s; }
+    .delay-2 { animation-delay: 0.3s; }
+    .delay-3 { animation-delay: 0.45s; }
+    .delay-4 { animation-delay: 0.6s; }
+    .delay-5 { animation-delay: 0.75s; }
+
+    .hero-image {
+        transform: perspective(1000px) rotateY(-10deg);
+        transition: transform 0.5s ease;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        border-radius: 16px;
+        border: 3px solid rgba(255, 214, 0, 0.3);
+    }
+
+    .hero-image:hover {
+        transform: perspective(1000px) rotateY(0deg);
+    }
+
+    .cta-button {
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+        transition: all 0.3s ease;
+    }
+
+    .cta-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.2);
+        transition: all 0.4s ease;
+        z-index: -1;
+    }
+
+    .cta-button:hover::before {
+        left: 0;
+    }
+
+    .hazard-alert-demo {
+        background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+        border-radius: 16px;
+        border: 2px solid #EF5350;
+        overflow: hidden;
+    }
+
+    .alert-header {
+        background: var(--safety-red);
+        color: white;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+    }
+
+    .detection-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .detection-list li {
+        padding: 14px 20px;
+        border-bottom: 1px solid rgba(239, 83, 80, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.95rem;
+    }
+
+    .detection-list li:last-child {
+        border-bottom: none;
+    }
+
+    .detection-list .violation {
+        color: var(--safety-red);
+        font-weight: 600;
+    }
+
+    .detection-list .safe {
+        color: var(--safety-green);
+        font-weight: 600;
+    }
+
+    .compliance-card {
+        background: linear-gradient(135deg, var(--safety-dark) 0%, var(--safety-blue) 100%);
+        border-radius: 20px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .compliance-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: repeating-linear-gradient(
+            -45deg,
+            var(--safety-yellow),
+            var(--safety-yellow) 15px,
+            var(--safety-dark) 15px,
+            var(--safety-dark) 30px
+        );
+    }
+
+    .ppe-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+    }
+
+    .ppe-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .ppe-item:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: scale(1.02);
+    }
+
+    .ppe-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+
+    .section-title {
+        position: relative;
+        display: inline-block;
+    }
+
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 0;
+        width: 60px;
+        height: 4px;
+        background: linear-gradient(90deg, var(--safety-orange), var(--safety-yellow));
+        border-radius: 2px;
+    }
+
+    .section-title.center::after {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(220, 53, 69, 0.1);
+        border: 1px solid rgba(220, 53, 69, 0.3);
+        color: var(--safety-red);
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .live-indicator .live-dot {
+        width: 6px;
+        height: 6px;
+        background: var(--safety-red);
+        border-radius: 50%;
+        animation: pulse-red 1.5s infinite;
+    }
+
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+
+    .industry-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        color: #495057;
+        transition: all 0.3s ease;
+    }
+
+    .industry-tag:hover {
+        background: #fff3e0;
+        border-color: var(--safety-orange);
+        color: var(--safety-orange);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="container py-5">
+    <div class="hero-section p-4 p-lg-5">
+        <div class="hero-pattern"></div>
+        <div class="hero-hazard-stripe"></div>
+        <div class="row align-items-center">
+            <div class="col-lg-6 animate-in">
+                <div class="safety-badge">
+                    <span class="pulse-dot"></span>
+                    AI-Powered Safety Monitoring
+                </div>
+                <h1 class="display-3 fw-bold mb-4" style="line-height: 1.15;">
+                    Worker Safety<br>
+                    <span style="background: linear-gradient(135deg, #FFD600, #FF6B00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Hazard Detection</span>
+                </h1>
+                <p class="lead mb-4 fs-5 opacity-90">
+                    Real-time AI surveillance for construction sites &amp; industrial workplaces. Detect PPE violations, safety hazards, and prevent accidents before they happen.
+                </p>
+                {% if not user.is_authenticated %}
+                <div class="d-grid gap-3 d-md-flex mt-4">
+                    <a href="{% url 'login' %}" class="btn btn-lg cta-button px-4 py-3" style="background: var(--safety-orange); color: white; border: none;">
+                        <i class="bi bi-box-arrow-in-right me-2"></i> Login
+                    </a>
+                </div>
+                {% else %}
+                <div class="d-grid gap-3 d-md-flex mt-4">
+                    <a href="#" class="btn btn-lg cta-button px-4 py-3" style="background: var(--safety-orange); color: white; border: none;">
+                        <i class="bi bi-broadcast me-2"></i> Start Live Detection
+                    </a>
+                   
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-lg-6 text-center animate-in delay-1">
+                <img src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" 
+                     alt="Construction Worker Safety" 
+                     class="img-fluid hero-image mt-4 mt-lg-0">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Section -->
+<div class="container py-4">
+    <div class="row g-4">
+        <div class="col-6 col-md-3 animate-in delay-1">
+            <div class="stats-card">
+                <div class="stats-number">99.2%</div>
+                <div class="text-muted small fw-medium mt-1">Detection Accuracy</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-in delay-2">
+            <div class="stats-card">
+                <div class="stats-number">0.3s</div>
+                <div class="text-muted small fw-medium mt-1">Response Time</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-in delay-3">
+            <div class="stats-card">
+                <div class="stats-number">85%</div>
+                <div class="text-muted small fw-medium mt-1">Accident Reduction</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 animate-in delay-4">
+            <div class="stats-card">
+                <div class="stats-number">500+</div>
+                <div class="text-muted small fw-medium mt-1">Sites Protected</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detection Features Section -->
+<div class="container py-5">
+    <div class="text-center mb-5 animate-in">
+        <h2 class="display-5 fw-bold section-title center">Intelligent Detection Capabilities</h2>
+        <p class="lead text-muted mx-auto mt-4" style="max-width: 650px;">
+            Multi-layered AI system that identifies safety violations and potential hazards in real-time
+        </p>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-3 animate-in delay-1">
+            <div class="card feature-card h-100">
+                <div class="card-body p-4">
+                    <div class="feature-icon-wrapper orange">
+                        <i class="bi bi-hardhat feature-icon orange"></i>
+                    </div>
+                    <h4 class="fw-bold mb-2">Helmet Detection</h4>
+                    <p class="text-muted mb-0">
+                        Instantly identifies workers without safety helmets and triggers real-time alerts to supervisors.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3 animate-in delay-2">
+            <div class="card feature-card h-100">
+                <div class="card-body p-4">
+                    <div class="feature-icon-wrapper blue">
+                        <i class="bi bi-person-badge feature-icon blue"></i>
+                    </div>
+                    <h4 class="fw-bold mb-2">Safety Vest Detection</h4>
+                    <p class="text-muted mb-0">
+                        Monitors high-visibility vest compliance across the entire work zone with zone-based tracking.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3 animate-in delay-3">
+            <div class="card feature-card h-100">
+                <div class="card-body p-4">
+                    <div class="feature-icon-wrapper red">
+                        <i class="bi bi-exclamation-triangle feature-icon red"></i>
+                    </div>
+                    <h4 class="fw-bold mb-2">Hazard Zone Entry</h4>
+                    <p class="text-muted mb-0">
+                        Detects unauthorized entry into restricted or dangerous zones with geofencing capabilities.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+       
+
+        
+
+        <div class="col-md-6 col-lg-3 animate-in delay-5">
+            <div class="card feature-card h-100 border-primary">
+                <div class="card-body p-4">
+                    <div class="feature-icon-wrapper purple">
+                        <i class="bi bi-broadcast-pin feature-icon purple"></i>
+                    </div>
+                    <h4 class="fw-bold mb-2">Live Monitoring</h4>
+                    <p class="text-muted mb-3">
+                        Real-time webcam feed analysis with instant visual alerts and violation logging.
+                    </p>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PPE Compliance + Live Demo Section -->
+<div class="container py-5">
+    <div class="row g-4">
+        <!-- PPE Compliance Card -->
+        <div class="col-lg-6 animate-in delay-1">
+            <div class="compliance-card p-4 p-lg-5 text-white h-100">
+                <h3 class="fw-bold mb-2">PPE Compliance Monitoring</h3>
+                <p class="opacity-75 mb-4">Comprehensive tracking of personal protective equipment across your workforce</p>
+                
+                <div class="ppe-grid">
+                    <div class="ppe-item">
+                        <div class="ppe-icon">🪖</div>
+                        <div class="small fw-medium">Hard Hat</div>
+                        <div class="text-success small mt-1">98% Compliant</div>
+                    </div>
+                    <div class="ppe-item">
+                        <div class="ppe-icon">🦺</div>
+                        <div class="small fw-medium">Safety Vest</div>
+                        <div class="text-success small mt-1">95% Compliant</div>
+                    </div>
+                    <div class="ppe-item">
+                        <div class="ppe-icon">👢</div>
+                        <div class="small fw-medium">Safety Boots</div>
+                        <div class="text-warning small mt-1">89% Compliant</div>
+                    </div>
+                    <div class="ppe-item">
+                        <div class="ppe-icon">🥽</div>
+                        <div class="small fw-medium">Eye Protection</div>
+                        <div class="text-success small mt-1">92% Compliant</div>
+                    </div>
+                    <div class="ppe-item">
+                        <div class="ppe-icon">🧤</div>
+                        <div class="small fw-medium">Gloves</div>
+                        <div class="text-warning small mt-1">87% Compliant</div>
+                    </div>
+                    <div class="ppe-item">
+                        <div class="ppe-icon">⚠️</div>
+                        <div class="small fw-medium">Harness</div>
+                        <div class="text-danger small mt-1">76% Compliant</div>
+                    </div>
+                </div>
+
+                
+            </div>
+        </div>
+
+        <!-- Live Detection Demo -->
+        <div class="col-lg-6 animate-in delay-2">
+            <div class="hazard-alert-demo h-100 d-flex flex-column">
+                <div class="alert-header">
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                    <span>Live Hazard Alerts</span>
+                    <span class="live-indicator ms-auto">
+                        <span class="live-dot"></span>
+                        LIVE
+                    </span>
+                </div>
+                <div class="p-3 flex-grow-1">
+                    <ul class="detection-list">
+                        <li>
+                            <i class="bi bi-x-circle-fill text-danger fs-5"></i>
+                            <div>
+                                <span class="violation">NO HELMET</span>
+                                <div class="text-muted small">Worker #12 - Zone B • 2 min ago</div>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="bi bi-x-circle-fill text-danger fs-5"></i>
+                            <div>
+                                <span class="violation">NO SAFETY VEST</span>
+                                <div class="text-muted small">Worker #07 - Zone A • 5 min ago</div>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                            <div>
+                                <span style="color: #F9A825; font-weight: 600;">RESTRICTED ZONE</span>
+                                <div class="text-muted small">Unauthorized entry - Zone D • 8 min ago</div>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                            <div>
+                                <span class="safe">ALL CLEAR</span>
+                                <div class="text-muted small">Zone C - Full compliance • 10 min ago</div>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="bi bi-x-circle-fill text-danger fs-5"></i>
+                            <div>
+                                <span class="violation">NO GLOVES</span>
+                                <div class="text-muted small">Worker #23 - Zone E • 12 min ago</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How It Works Section -->
+<div class="container py-5">
+    <div class="text-center mb-5 animate-in">
+        <h2 class="display-5 fw-bold section-title center">How It Works</h2>
+        <p class="lead text-muted mx-auto mt-4" style="max-width: 600px;">
+            Deploy safety monitoring in four simple steps
+        </p>
+    </div>
+    
+    <div class="row position-relative">
+        <div class="step-connector d-none d-md-block"></div>
+        
+        <div class="col-md-3 mb-5 animate-in delay-1">
+            <div class="step-item text-center">
+                <div class="step-circle step-1">
+                    <span>1</span>
+                </div>
+                <h5 class="fw-bold mb-2">Set Up Cameras</h4>
+                <p class="text-muted small">Install CCTV or webcam feeds at your workplace</p>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-5 animate-in delay-2">
+            <div class="step-item text-center">
+                <div class="step-circle step-2">
+                    <span>2</span>
+                </div>
+                <h5 class="fw-bold mb-2">Configure Rules</h4>
+                <p class="text-muted small">Define PPE requirements and hazard zones</p>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-5 animate-in delay-3">
+            <div class="step-item text-center">
+                <div class="step-circle step-3">
+                    <span>3</span>
+                </div>
+                <h5 class="fw-bold mb-2">AI Monitoring</h4>
+                <p class="text-muted small">System continuously analyzes video feeds in real-time</p>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-5 animate-in delay-4">
+            <div class="step-item text-center">
+                <div class="step-circle step-4">
+                    <span>4</span>
+                </div>
+                <h5 class="fw-bold mb-2">Instant Alerts</h4>
+                <p class="text-muted small">Receive real-time notifications for any violations</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Industries Section -->
+<div class="container py-5">
+    <div class="text-center mb-4 animate-in">
+        <h2 class="display-6 fw-bold">Trusted Across Industries</h2>
+    </div>
+    <div class="d-flex flex-wrap justify-content-center gap-3 animate-in delay-1">
+        <span class="industry-tag"><i class="bi bi-building"></i> Construction</span>
+        <span class="industry-tag"><i class="bi bi-gear"></i> Manufacturing</span>
+        <span class="industry-tag"><i class="bi bi-droplet"></i> Oil & Gas</span>
+        <span class="industry-tag"><i class="bi bi-lightning"></i> Energy & Power</span>
+        <span class="industry-tag"><i class="bi bi-capsule"></i> Pharmaceutical</span>
+        <span class="industry-tag"><i class="bi bi-truck"></i> Logistics</span>
+        <span class="industry-tag"><i class="bi bi-minecart"></i> Mining</span>
+        <span class="industry-tag"><i class="bi bi-hammer"></i> Heavy Industry</span>
+    </div>
+</div>
+
+<!-- CTA / Testimonial Section -->
+<div class="container py-5">
+    <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="row g-0">
+            <div class="col-md-6 p-5" style="background: linear-gradient(135deg, var(--safety-dark) 0%, var(--safety-blue) 100%); color: white;">
+                <div class="mb-3">
+                    <i class="bi bi-shield-fill-check fs-1" style="color: var(--safety-yellow);"></i>
+                </div>
+                <h2 class="display-6 fw-bold mb-3">Protect Your Workers Today</h2>
+                <p class="opacity-90 mb-4">
+                    Join 500+ companies using AI-powered safety monitoring to reduce workplace accidents and ensure regulatory compliance.
+                </p>
+                <ul class="list-unstyled mb-4">
+                    <li class="mb-2"><i class="bi bi-check-circle-fill me-2" style="color: var(--safety-green);"></i> OSHA Compliance Ready</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill me-2" style="color: var(--safety-green);"></i> Real-time Violation Alerts</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill me-2" style="color: var(--safety-green);"></i> Automated Safety Reports</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill me-2" style="color: var(--safety-green);"></i> 24/7 Continuous Monitoring</li>
+                </ul>
+                <a href="{% url 'login' %}" class="btn btn-lg cta-button" style="background: var(--safety-orange); color: white; border: none;">
+                    <i class="bi bi-box-arrow-in-right me-2"></i> Login
+                </a>
+            </div>
+            <div class="col-md-6 bg-white p-5">
+                <div class="mb-4">
+                    <div class="d-flex mb-2">
+                        <div class="text-warning">
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                        </div>
+                        <span class="text-muted ms-2 small">(200+ safety reviews)</span>
+                    </div>
+                    <blockquote class="blockquote mb-0">
+                        <p class="fs-5">"SafeGuard AI reduced our safety incidents by 78% in just 3 months. The helmet and vest detection is incredibly accurate, and the real-time alerts allow us to intervene before accidents happen."</p>
+                    </blockquote>
+                </div>
+                <div class="d-flex align-items-center mt-4 pt-3 border-top">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; font-weight: 700;">
+                        MR
+                    </div>
+                    <div>
+                        <div class="fw-bold">Michael Rodriguez</div>
+                        <div class="text-muted small">Safety Director, ConstructPro Inc.</div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-top">
+                    <div class="d-flex mb-2">
+                        <div class="text-warning">
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-half"></i>
+                        </div>
+                        <span class="text-muted ms-2 small">(Safety audit report)</span>
+                    </div>
+                    <blockquote class="blockquote mb-0">
+                        <p>"The automated compliance reporting saved us 40 hours per month on safety documentation. During our last OSHA audit, we passed with zero violations thanks to SafeGuard AI's tracking."</p>
+                    </blockquote>
+                    <div class="d-flex align-items-center mt-3">
+                        <div class="rounded-circle me-3 d-flex align-items-center justify-content-center text-white" style="width: 50px; height: 50px; font-weight: 700; background: var(--safety-orange);">
+                            LP
+                        </div>
+                        <div>
+                            <div class="fw-bold">Lisa Park</div>
+                            <div class="text-muted small">HSE Manager, TechManufacture Co.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Animate elements when they come into view
+        const animateElements = document.querySelectorAll('.animate-in');
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationPlayState = 'running';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.1
+        });
+        
+        animateElements.forEach(element => {
+            element.style.animationPlayState = 'paused';
+            observer.observe(element);
+        });
+
+        // Animate stats numbers
+        const statsNumbers = document.querySelectorAll('.stats-number');
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const element = entry.target;
+                    const text = element.textContent;
+                    
+                    if (text.includes('%')) {
+                        const target = parseFloat(text);
+                        animateValue(element, 0, target, 1500, '%');
+                    } else if (text.includes('s')) {
+                        const target = parseFloat(text);
+                        animateValue(element, 0, target, 1000, 's');
+                    } else if (text.includes('+')) {
+                        const target = parseInt(text);
+                        animateValue(element, 0, target, 1200, '+');
+                    }
+                    
+                    statsObserver.unobserve(element);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        statsNumbers.forEach(el => statsObserver.observe(el));
+
+        function animateValue(element, start, end, duration, suffix) {
+            const isFloat = !Number.isInteger(end);
+            let startTimestamp = null;
+            
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+                const current = start + (end - start) * eased;
+                
+                element.textContent = (isFloat ? current.toFixed(1) : Math.floor(current)) + suffix;
+                
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            
+            window.requestAnimationFrame(step);
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

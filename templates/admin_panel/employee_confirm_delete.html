@@ -1,0 +1,24 @@
+{% extends 'base_admin.html' %}
+{% block title %}Delete {{ employee.username }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Delete Employee</h1>
+</div>
+<div class="card">
+    <div class="card-body">
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>Warning:</strong> Deleting <b>{{ employee.first_name }} {{ employee.last_name }} ({{ employee.employee_id }})</b>
+            will also delete <b>{{ employee.violations.count }}</b> violation record(s) tied to them.
+            This cannot be undone.
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Yes, Delete Permanently
+            </button>
+            <a href="{% url 'employee_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

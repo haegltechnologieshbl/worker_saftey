@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin - SafeGuard AI{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --admin-dark: #0F1B2D;
+            --admin-blue: #162544;
+            --admin-orange: #FF6B00;
+            --admin-yellow: #FFD600;
+            --admin-red: #DC3545;
+            --admin-green: #28A745;
+            --sidebar-width: 250px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #F0F2F5;
+            color: #333;
+        }
+        .admin-shell { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, var(--admin-dark) 0%, var(--admin-blue) 100%);
+            color: #fff;
+            padding: 0;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            overflow-y: auto;
+            border-right: 3px solid var(--admin-orange);
+        }
+        .sidebar-brand {
+            padding: 18px 20px;
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 800; font-size: 1.1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .sidebar-brand .icon {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--admin-orange), var(--admin-yellow));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+        }
+        .sidebar-brand small {
+            display: block;
+            font-size: 0.65rem; font-weight: 500;
+            letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.5); text-transform: uppercase;
+        }
+        .sidebar-nav { list-style: none; padding: 12px 0; }
+        .sidebar-nav .nav-section {
+            font-size: 0.7rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.4);
+            padding: 14px 20px 6px;
+        }
+        .sidebar-nav a {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 20px;
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            font-size: 0.92rem;
+            transition: all 0.15s;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-nav a:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .sidebar-nav a.active {
+            background: rgba(255,107,0,0.15);
+            color: #fff;
+            border-left-color: var(--admin-orange);
+        }
+        .sidebar-nav a i { font-size: 1.05rem; width: 20px; }
+        .sidebar-footer {
+            padding: 14px 20px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            margin-top: 20px;
+        }
+        .sidebar-footer .user {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+        }
+        .sidebar-footer .avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--admin-orange), var(--admin-yellow));
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700;
+        }
+        .sidebar-footer .user-info { font-size: 0.85rem; }
+        .sidebar-footer .user-info small { color: rgba(255,255,255,0.5); display: block; }
+        .sidebar-footer .logout-btn {
+            width: 100%; padding: 8px;
+            background: transparent; border: 1px solid rgba(220,53,69,0.5);
+            color: #ff8a98; border-radius: 6px;
+            font-size: 0.85rem; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .sidebar-footer .logout-btn:hover {
+            background: rgba(220,53,69,0.15);
+            color: #fff;
+        }
+        .main {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 24px 32px;
+            min-height: 100vh;
+        }
+        .page-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .page-header h1 {
+            font-size: 1.5rem; font-weight: 700; color: var(--admin-dark);
+        }
+        .page-header .breadcrumb-nav {
+            font-size: 0.85rem; color: #6b7280; margin-top: 4px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: #fff; border-bottom: 1px solid #f0f0f0;
+            font-weight: 600;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 14px 20px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex; align-items: center; gap: 16px;
+        }
+        .stat-card .stat-icon {
+            width: 52px; height: 52px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; color: #fff;
+        }
+        .stat-card.orange .stat-icon { background: var(--admin-orange); }
+        .stat-card.green .stat-icon { background: var(--admin-green); }
+        .stat-card.red .stat-icon { background: var(--admin-red); }
+        .stat-card.blue .stat-icon { background: var(--admin-blue); }
+        .stat-card .stat-value {
+            font-size: 1.7rem; font-weight: 700;
+            color: var(--admin-dark);
+        }
+        .stat-card .stat-label {
+            font-size: 0.8rem; color: #6b7280;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-admin {
+            background: var(--admin-orange); border: none; color: #fff;
+            padding: 8px 18px; border-radius: 8px; font-weight: 600;
+        }
+        .btn-admin:hover { background: #e85d00; color: #fff; }
+        .table-clean { background: #fff; border-radius: 10px; overflow: hidden; }
+        .table-clean thead th {
+            background: #f8fafc; border-bottom: 1px solid #e5e7eb;
+            font-size: 0.78rem; text-transform: uppercase;
+            letter-spacing: 0.05em; color: #6b7280; font-weight: 600;
+        }
+        .table-clean tbody td { vertical-align: middle; }
+        .badge-violation {
+            background: rgba(220,53,69,0.1); color: var(--admin-red);
+            font-weight: 600;
+        }
+        .alert { border-radius: 10px; border: none; }
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; }
+            .sidebar-brand .brand-text, .sidebar-nav .nav-section,
+            .sidebar-nav span:not(.badge), .sidebar-footer .user-info,
+            .sidebar-footer .logout-btn { display: none; }
+            .main { margin-left: 70px; padding: 16px; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="admin-shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="icon"><i class="bi bi-shield-check"></i></div>
+            <div class="brand-text">
+                SafeGuard
+                <small>Admin Panel</small>
+            </div>
+        </div>
+        <ul class="sidebar-nav">
+            <li class="nav-section">Overview</li>
+            <li><a href="{% url 'manage_dashboard' %}" class="{% if request.resolver_match.url_name == 'manage_dashboard' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+            <li class="nav-section">Management</li>
+            <li><a href="{% url 'employee_list' %}" class="{% if 'employee' in request.resolver_match.url_name %}active{% endif %}"><i class="bi bi-people"></i><span>Employees</span></a></li>
+            <li><a href="{% url 'violation_list' %}" class="{% if 'violation' in request.resolver_match.url_name %}active{% endif %}"><i class="bi bi-exclamation-triangle"></i><span>Violations</span></a></li>
+            <li><a href="{% url 'leaderboard' %}" class="{% if request.resolver_match.url_name == 'leaderboard' %}active{% endif %}"><i class="bi bi-trophy"></i><span>Leaderboard</span></a></li>
+            <li class="nav-section">Detection</li>
+            <li><a href="{% url 'live_detection' %}" class="{% if request.resolver_match.url_name == 'live_detection' %}active{% endif %}"><i class="bi bi-camera-reels"></i><span>Live Detection</span></a></li>
+            <li><a href="{% url 'video_upload1' %}" class="{% if request.resolver_match.url_name == 'video_upload1' %}active{% endif %}"><i class="bi bi-camera-video"></i><span>Video Upload</span></a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <div class="user">
+                <div class="avatar">{{ user.username|make_list|first|upper }}</div>
+                <div class="user-info">
+                    {{ user.username }}
+                    <small>Administrator</small>
+                </div>
+            </div>
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </button>
+            </form>
+        </div>
+    </aside>
+    <main class="main">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

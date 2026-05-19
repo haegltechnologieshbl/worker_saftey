@@ -1,0 +1,120 @@
+{% extends 'base_admin.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Video Upload &amp; Detection</h1>
+        <div class="breadcrumb-nav">Upload a video and run YOLO detection on it</div>
+    </div>
+    <a href="{% url 'video_lists' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-collection-play"></i> View All Processed Videos
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="video" class="form-label fw-semibold">Choose a video</label>
+                <input type="file" name="video" accept="video/*" required class="form-control">
+                <small class="text-muted">Supported: MP4, AVI, MOV</small>
+            </div>
+            <button type="submit" class="btn btn-admin">
+                <i class="bi bi-upload"></i> Upload and Detect
+            </button>
+        </form>
+
+        {% if error %}
+            <div class="alert alert-danger mt-3">{{ error }}</div>
+        {% endif %}
+
+        {% if uploaded_file_url %}
+        <hr class="my-4">
+        <h5>Result</h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Original Video</div>
+                    <div class="card-body p-2">
+                        <video controls style="width:100%;border-radius:6px;">
+                            <source src="{{ uploaded_file_url }}" type="video/mp4">
+                        </video>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Detected Output</div>
+                    <div class="card-body p-2">
+                        <video controls style="width:100%;border-radius:6px;">
+                            <source src="{{ output_file_url }}" type="video/mp4">
+                        </video>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+        <h5>
+            Violations Logged
+            <span class="badge badge-violation">{{ violation_summary|length }}</span>
+        </h5>
+        {% if violation_summary %}
+        <p class="text-muted">
+            Violations are saved as <em>Unknown</em>. Click <strong>Search Person</strong>
+            below to run face recognition against enrolled employees.
+        </p>
+        <table class="table table-clean mt-2">
+            <thead>
+                <tr>
+                    <th>Snapshot</th>
+                    <th>Violation</th>
+                    <th>Confidence</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for v in violation_summary %}
+                <tr>
+                    <td>
+                        <a href="{{ v.snapshot_url }}" target="_blank">
+                            <img src="{{ v.snapshot_url }}" style="width:80px;height:55px;object-fit:cover;border-radius:4px;">
+                        </a>
+                    </td>
+                    <td><span class="badge badge-violation">{{ v.violation_type }}</span></td>
+                    <td>{{ v.confidence|floatformat:2 }}</td>
+                    <td>
+                        {% if v.pk %}
+                        <form method="post" action="{% url 'violation_search' v.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-search"></i> Search Person
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="mt-3 d-flex gap-2">
+            <form method="post" action="{% url 'violation_search_all_unknown' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-admin">
+                    <i class="bi bi-search"></i> Search All Persons
+                </button>
+            </form>
+            <a href="{% url 'violation_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-list"></i> View All Violations
+            </a>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <i class="bi bi-shield-check"></i> No violations detected in this video.
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

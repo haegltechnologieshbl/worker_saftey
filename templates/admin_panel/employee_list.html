@@ -1,0 +1,73 @@
+{% extends 'base_admin.html' %}
+{% block title %}Employees{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Employees</h1>
+        <div class="breadcrumb-nav">Manage workers in the system</div>
+    </div>
+    <a href="{% url 'employee_add' %}" class="btn btn-admin">
+        <i class="bi bi-person-plus"></i> Add Employee
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="d-flex">
+            <input type="text" name="q" value="{{ q }}" class="form-control me-2"
+                   placeholder="Search by name, username, or employee ID...">
+            <button class="btn btn-outline-secondary"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-clean mb-0">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Department</th>
+                    <th>Violations</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for emp in employees %}
+                <tr>
+                    <td>
+                        {% if emp.photo %}
+                            <img src="{{ emp.photo.url }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+                        {% else %}
+                            <div style="width:40px;height:40px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:600;">
+                                {{ emp.first_name|make_list|first|upper }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ emp.employee_id }}</strong></td>
+                    <td>{{ emp.first_name }} {{ emp.last_name }}</td>
+                    <td>{{ emp.username }}</td>
+                    <td>{{ emp.department|default:"-" }}</td>
+                    <td>
+                        {% if emp.vc > 0 %}
+                            <span class="badge badge-violation">{{ emp.vc }}</span>
+                        {% else %}
+                            <span class="text-success">0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'employee_detail' emp.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                        <a href="{% url 'employee_edit' emp.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <a href="{% url 'employee_delete' emp.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="text-center py-5 text-muted">
+                    No employees yet. <a href="{% url 'employee_add' %}">Add the first one</a>.
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

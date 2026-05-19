@@ -1,0 +1,753 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Profile - SafeGuard AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: #F0F2F5 !important;
+    }
+
+    .profile-wrapper {
+        min-height: calc(100vh - 64px);
+        background: linear-gradient(160deg, #0F1B2D 0%, #162544 40%, #1a3355 100%);
+        position: relative;
+        overflow: hidden;
+        margin-top: -64px;
+        padding-top: 64px;
+    }
+
+    .profile-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 64px;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: repeating-linear-gradient(
+            -45deg,
+            #FFD600,
+            #FFD600 20px,
+            #0F1B2D 20px,
+            #0F1B2D 40px
+        );
+        z-index: 2;
+    }
+
+    .profile-grid-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.03;
+        background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23FFD600' stroke-width='1'%3E%3Cpath d='M0 0h80v80H0z'/%3E%3Cpath d='M0 40h80M40 0v80'/%3E%3Ccircle cx='40' cy='40' r='20'/%3E%3C/g%3E%3C/svg%3E");
+        pointer-events: none;
+    }
+
+    .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        pointer-events: none;
+    }
+
+    .glow-orb.orange {
+        width: 350px;
+        height: 350px;
+        background: rgba(255, 107, 0, 0.06);
+        top: 10%;
+        right: 5%;
+    }
+
+    .glow-orb.yellow {
+        width: 280px;
+        height: 280px;
+        background: rgba(255, 214, 0, 0.04);
+        bottom: 10%;
+        left: 5%;
+    }
+
+    /* ========== MAIN PROFILE CARD ========== */
+    .profile-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        position: relative;
+        z-index: 3;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .profile-cover {
+        background: linear-gradient(135deg, #0F1B2D 0%, #162544 50%, #1a3355 100%);
+        padding: 40px 40px 80px;
+        position: relative;
+        overflow: hidden;
+        text-align: center;
+    }
+
+    .profile-cover::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.04;
+        background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23FFD600' stroke-width='1'%3E%3Cpath d='M0 0h80v80H0z'/%3E%3Cpath d='M0 40h80M40 0v80'/%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .profile-cover::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: repeating-linear-gradient(
+            -45deg,
+            #FFD600,
+            #FFD600 12px,
+            transparent 12px,
+            transparent 24px
+        );
+    }
+
+    .cover-glow {
+        position: absolute;
+        top: -40px;
+        right: -40px;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 107, 0, 0.08);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .cover-glow-2 {
+        position: absolute;
+        bottom: -30px;
+        left: -30px;
+        width: 150px;
+        height: 150px;
+        background: rgba(255, 214, 0, 0.05);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .profile-avatar-wrapper {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 18px;
+        z-index: 1;
+    }
+
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 24px;
+        object-fit: cover;
+        border: 4px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        transition: all 0.4s ease;
+        background: linear-gradient(135deg, #FF6B00, #FFD600);
+    }
+
+    .profile-avatar.fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: white;
+    }
+
+    .profile-avatar-wrapper:hover .profile-avatar {
+        transform: scale(1.05);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .avatar-badge {
+        position: absolute;
+        bottom: -4px;
+        right: -4px;
+        width: 34px;
+        height: 34px;
+        background: var(--safety-green);
+        border: 3px solid white;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+    }
+
+    .profile-name {
+        color: white;
+        font-weight: 800;
+        font-size: 1.6rem;
+        margin: 0;
+        letter-spacing: -0.02em;
+        position: relative;
+        z-index: 1;
+    }
+
+    .profile-role {
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin: 6px 0 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    .profile-status-badges {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 16px;
+        position: relative;
+        z-index: 1;
+        flex-wrap: wrap;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 14px;
+        border-radius: 50px;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    .status-badge.active {
+        background: rgba(40, 167, 69, 0.15);
+        border: 1px solid rgba(40, 167, 69, 0.3);
+        color: #66BB6A;
+    }
+
+    .status-badge.verified {
+        background: rgba(25, 118, 210, 0.15);
+        border: 1px solid rgba(25, 118, 210, 0.3);
+        color: #64B5F6;
+    }
+
+    .status-badge .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    .status-badge.active .badge-dot { background: #66BB6A; }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(40, 167, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+    }
+
+    /* ========== BODY SECTION ========== */
+    .profile-body {
+        padding: 0 40px 40px;
+        margin-top: -50px;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* ========== INFO SECTIONS ========== */
+    .info-block {
+        background: #F8F9FA;
+        border-radius: 14px;
+        padding: 24px;
+        margin-bottom: 20px;
+        border: 1px solid #f0f0f0;
+        transition: all 0.3s ease;
+    }
+
+    .info-block:hover {
+        background: white;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        border-color: transparent;
+    }
+
+    .info-block-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .info-block-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .info-block-icon.personal { background: #FFF3E0; color: #FF6B00; }
+    .info-block-icon.contact { background: #E3F2FD; color: #1976D2; }
+    .info-block-icon.security { background: #E8F5E9; color: #2E7D32; }
+    .info-block-icon.activity { background: #F3E5F5; color: #7B1FA2; }
+
+    .info-block-header h6 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #333;
+    }
+
+    .info-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+        gap: 14px;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .info-row:first-of-type {
+        padding-top: 0;
+    }
+
+    .info-row-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #adb5bd;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .info-row-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .info-row-content small {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #adb5bd;
+        margin-bottom: 2px;
+    }
+
+    .info-row-content p {
+        margin: 0;
+        font-weight: 600;
+        font-size: 0.92rem;
+        color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .info-row-content .not-set {
+        color: #ced4da;
+        font-weight: 500;
+        font-style: italic;
+    }
+
+    /* ========== ACTIVITY SUMMARY ========== */
+    .activity-mini-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .activity-mini-item {
+        background: white;
+        border-radius: 10px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid #f0f0f0;
+        transition: all 0.3s ease;
+    }
+
+    .activity-mini-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .activity-mini-item .mini-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #333;
+        line-height: 1;
+    }
+
+    .activity-mini-item .mini-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #adb5bd;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-top: 6px;
+    }
+
+    .activity-mini-item.orange .mini-value { color: #FF6B00; }
+    .activity-mini-item.blue .mini-value { color: #1976D2; }
+    .activity-mini-item.green .mini-value { color: #2E7D32; }
+
+    /* ========== ACTION BUTTONS ========== */
+    .profile-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .btn-profile-action {
+        flex: 1;
+        min-width: 200px;
+        border-radius: 12px;
+        padding: 14px 24px;
+        font-weight: 700;
+        font-size: 0.88rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-profile-action.primary {
+        background: linear-gradient(135deg, #FF6B00, #E85D00);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+    }
+
+    .btn-profile-action.primary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .btn-profile-action.primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
+        color: white;
+    }
+
+    .btn-profile-action.primary:hover::before {
+        left: 100%;
+    }
+
+    .btn-profile-action.secondary {
+        background: transparent;
+        color: #495057;
+        border: 2px solid #e0e0e0;
+    }
+
+    .btn-profile-action.secondary:hover {
+        border-color: #FF6B00;
+        color: #FF6B00;
+        transform: translateY(-2px);
+    }
+
+    .btn-profile-action.danger {
+        background: transparent;
+        color: #DC3545;
+        border: 2px solid #f5c6cb;
+    }
+
+    .btn-profile-action.danger:hover {
+        background: #DC3545;
+        border-color: #DC3545;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+
+    /* ========== ANIMATIONS ========== */
+    .animate-in {
+        opacity: 0;
+        transform: translateY(25px);
+        transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .animate-in.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .delay-1 { transition-delay: 0.1s; }
+    .delay-2 { transition-delay: 0.2s; }
+    .delay-3 { transition-delay: 0.3s; }
+    .delay-4 { transition-delay: 0.4s; }
+    .delay-5 { transition-delay: 0.5s; }
+
+    @media (max-width: 767.98px) {
+        .profile-cover {
+            padding: 30px 20px 70px;
+        }
+
+        .profile-body {
+            padding: 0 20px 25px;
+        }
+
+        .profile-name {
+            font-size: 1.3rem;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 20px;
+        }
+
+        .activity-mini-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .activity-mini-item {
+            padding: 12px 8px;
+        }
+
+        .activity-mini-item .mini-value {
+            font-size: 1.2rem;
+        }
+
+        .profile-actions {
+            flex-direction: column;
+        }
+
+        .btn-profile-action {
+            min-width: unset;
+        }
+
+        .info-row {
+            flex-wrap: wrap;
+        }
+
+        .info-row-content {
+            min-width: calc(100% - 48px);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-wrapper py-5">
+    <!-- Background decorations -->
+    <div class="profile-grid-pattern"></div>
+    <div class="glow-orb orange"></div>
+    <div class="glow-orb yellow"></div>
+
+    <div class="container">
+        <div class="profile-card animate-in">
+            <!-- Cover Section -->
+            <div class="profile-cover">
+                <div class="cover-glow"></div>
+                <div class="cover-glow-2"></div>
+
+                <div class="profile-avatar-wrapper">
+                    {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="profile-avatar">
+                    {% else %}
+                        <div class="profile-avatar fallback">
+                            {{ user.username|make_list|first|upper }}
+                        </div>
+                    {% endif %}
+                    <div class="avatar-badge">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                </div>
+
+                <h2 class="profile-name">{{ user.username }}</h2>
+                <p class="profile-role">Safety Monitoring Officer</p>
+
+                <div class="profile-status-badges">
+                    <span class="status-badge active">
+                        <span class="badge-dot"></span> Active
+                    </span>
+                    <span class="status-badge verified">
+                        <i class="bi bi-patch-check-fill"></i> Verified
+                    </span>
+                </div>
+            </div>
+
+            <!-- Body Section -->
+            <div class="profile-body">
+                <!-- Info Blocks Grid -->
+                <div class="row g-3">
+                    <!-- Personal Information -->
+                    <div class="col-md-6 animate-in delay-1">
+                        <div class="info-block">
+                            <div class="info-block-header">
+                                <div class="info-block-icon personal">
+                                    <i class="bi bi-person"></i>
+                                </div>
+                                <h6>Personal Information</h6>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-row-icon">
+                                    <i class="bi bi-person-badge"></i>
+                                </div>
+                                <div class="info-row-content">
+                                    <small>Username</small>
+                                    <p>{{ user.username }}</p>
+                                </div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-row-icon">
+                                    <i class="bi bi-envelope"></i>
+                                </div>
+                                <div class="info-row-content">
+                                    <small>Email Address</small>
+                                    {% if user.email %}
+                                        <p>{{ user.email }}</p>
+                                    {% else %}
+                                        <p class="not-set">Not provided</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-row-icon">
+                                    <i class="bi bi-telephone"></i>
+                                </div>
+                                <div class="info-row-content">
+                                    <small>Phone Number</small>
+                                    {% if user.phone_number %}
+                                        <p>{{ user.phone_number }}</p>
+                                    {% else %}
+                                        <p class="not-set">Not provided</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account & Security -->
+                    <div class="col-md-6 animate-in delay-2">
+                        <div class="info-block">
+                            <div class="info-block-header">
+                                <div class="info-block-icon security">
+                                    <i class="bi bi-shield-lock"></i>
+                                </div>
+                                <h6>Account & Security</h6>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-row-icon">
+                                    <i class="bi bi-calendar-check"></i>
+                                </div>
+                                <div class="info-row-content">
+                                    <small>Member Since</small>
+                                    <p>{{ user.date_joined|date:"F d, Y" }}</p>
+                                </div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-row-icon">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div class="info-row-content">
+                                    <small>Last Login</small>
+                                    <p>{{ user.last_login|date:"F d, Y — h:i A" }}</p>
+                                </div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-row-icon">
+                                    <i class="bi bi-key"></i>
+                                </div>
+                                <div class="info-row-content">
+                                    <small>Password</small>
+                                    <p>••••••••••</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Summary -->
+                <div class="info-block animate-in delay-3">
+                    <div class="info-block-header">
+                        <div class="info-block-icon activity">
+                            <i class="bi bi-bar-chart-line"></i>
+                        </div>
+                        <h6>Activity Summary</h6>
+                    </div>
+                    <div class="activity-mini-grid">
+                        <div class="activity-mini-item orange">
+                            <div class="mini-value">{{ total_videos|default:0 }}</div>
+                            <div class="mini-label">Videos</div>
+                        </div>
+                        <div class="activity-mini-item blue">
+                            <div class="mini-value">{{ processed_videos|default:0 }}</div>
+                            <div class="mini-label">Processed</div>
+                        </div>
+                        <div class="activity-mini-item green">
+                            <div class="mini-value">95%</div>
+                            <div class="mini-label">Accuracy</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="profile-actions animate-in delay-4">
+                    <a href="{% url 'profile-update' %}" class="btn btn-profile-action primary">
+                        <i class="bi bi-pencil-square"></i> Update Profile
+                    </a>
+                   
+                    <form action="{% url 'logout' %}" method="post" style="display: contents;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-profile-action danger">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const animateElements = document.querySelectorAll('.animate-in');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        animateElements.forEach(el => observer.observe(el));
+    });
+</script>
+{% endblock %}

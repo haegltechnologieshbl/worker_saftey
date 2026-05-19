@@ -1,0 +1,109 @@
+{% extends 'base_admin.html' %}
+{% block title %}Violation #{{ violation.pk }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Violation #{{ violation.pk }}</h1>
+        <div class="breadcrumb-nav">
+            <a href="{% url 'violation_list' %}">Violations</a> / #{{ violation.pk }}
+        </div>
+    </div>
+    <a href="{% url 'violation_delete' violation.pk %}" class="btn btn-outline-danger">
+        <i class="bi bi-trash"></i> Delete
+    </a>
+</div>
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header">Snapshot (Annotated)</div>
+            <div class="card-body text-center">
+                {% if violation.snapshot %}
+                    <img src="{{ violation.snapshot.url }}" style="max-width:100%;border-radius:8px;">
+                {% else %}
+                    <p class="text-muted">No snapshot available.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% if violation.clean_snapshot %}
+        <div class="card">
+            <div class="card-header">Clean Snapshot (Used for Face Search)</div>
+            <div class="card-body text-center">
+                <img src="{{ violation.clean_snapshot.url }}" style="max-width:100%;border-radius:8px;">
+                <p class="text-muted mt-2 mb-0"><small>This un-annotated image is used for face recognition.</small></p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Details</div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Type:</strong><br><span class="badge badge-violation">{{ violation.violation_type }}</span></p>
+                <p class="mb-2"><strong>When:</strong><br>{{ violation.timestamp|date:"F d, Y H:i:s" }}</p>
+                <p class="mb-2"><strong>Confidence:</strong><br>{{ violation.confidence|floatformat:3 }}</p>
+                <p class="mb-2"><strong>Source:</strong><br>{{ violation.source }}</p>
+                <hr>
+                <p class="mb-1"><strong>Identified Employee:</strong></p>
+                {% if violation.employee %}
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        {% if violation.employee.photo %}
+                            <img src="{{ violation.employee.photo.url }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+                        {% endif %}
+                        <div>
+                            <a href="{% url 'employee_detail' violation.employee.pk %}">
+                                {{ violation.employee.first_name }} {{ violation.employee.last_name }}
+                            </a>
+                            <small class="d-block text-muted">{{ violation.employee.employee_id }}</small>
+                            {% if violation.employee.phone_number %}
+                                <small class="d-block text-muted"><i class="bi bi-telephone"></i> {{ violation.employee.phone_number }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Email Notification Status -->
+                    <div class="mb-2">
+                        <small><strong>Email Status:</strong></small><br>
+                        {% if violation.sms_sent %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Sent</span>
+                            <small class="text-muted d-block">{{ violation.sms_sent_at|date:"M d, Y H:i" }}</small>
+                        {% elif violation.sms_error %}
+                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>
+                            <small class="text-muted d-block">{{ violation.sms_error }}</small>
+                        {% else %}
+                            <span class="badge bg-secondary"><i class="bi bi-envelope"></i> Not sent</span>
+                        {% endif %}
+                    </div>
+
+                    <form method="post" action="{% url 'violation_send_email' violation.pk %}" class="mb-2">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-admin w-100">
+                            <i class="bi bi-envelope-paper"></i>
+                            {% if violation.sms_sent %}Resend Email{% else %}Send Email{% endif %}
+                        </button>
+                    </form>
+
+                    <form method="post" action="{% url 'violation_search' violation.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                            <i class="bi bi-arrow-clockwise"></i> Re-search
+                        </button>
+                    </form>
+                {% else %}
+                    <p class="text-muted"><i class="bi bi-person-x"></i> Not yet identified</p>
+                    {% if violation.clean_snapshot %}
+                        <p class="text-muted"><small>Face search will use the clean snapshot (without YOLO boxes).</small></p>
+                    {% else %}
+                        <p class="text-warning"><small><i class="bi bi-exclamation-triangle"></i> No clean snapshot available for face search.</small></p>
+                    {% endif %}
+                    <form method="post" action="{% url 'violation_search' violation.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-admin w-100">
+                            <i class="bi bi-search"></i> Search This Person
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
