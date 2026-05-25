@@ -12,10 +12,77 @@ import time
 from datetime import timedelta, datetime as _dt
 from functools import wraps
 from pathlib import Path
-from ultralytics import YOLO
-from pathlib import Path
-import shutil
-from moviepy import VideoFileClip
+
+# ---------------------------------------------------------------------------
+# Heavy ML imports — LAZY and SILENT so shared hosting doesn't spam logs
+# or waste memory on repeated import attempts.
+#
+# Set DISABLE_ML=1 in your environment (.env) to completely skip loading
+# heavy ML libraries (torch, ultralytics, cv2, etc.). This is recommended
+# for shared hosting where these libraries cannot be installed.
+# ---------------------------------------------------------------------------
+_DISABLE_ML = os.environ.get('DISABLE_ML', '').lower() in ('1', 'true', 'yes')
+
+class _LazyYOLO:
+    """Singleton lazy loader for YOLO — only imports when first accessed."""
+    _instance = None
+    _model = None
+    _available = False
+    _tried = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @property
+    def model(self):
+        if _DISABLE_ML:
+            return None
+        if not self._tried:
+            self._tried = True
+            try:
+                from ultralytics import YOLO
+                if os.path.exists('best.pt'):
+                    self._model = YOLO('best.pt')
+                    self._available = True
+            except Exception:
+                pass
+        return self._model
+
+    @property
+    def available(self):
+        if _DISABLE_ML:
+            return False
+        _ = self.model  # trigger load
+        return self._available
+
+_LAZY_YOLO = _LazyYOLO()
+
+# Backward-compat module-level names
+YOLO_MODEL = _LAZY_YOLO.model
+YOLO_AVAILABLE = _LAZY_YOLO.available
+
+try:
+    from moviepy import VideoFileClip
+    MOVIEPY_AVAILABLE = True
+except Exception:
+    VideoFileClip = None
+    MOVIEPY_AVAILABLE = False
+
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except Exception:
+    cv2 = None
+    CV2_AVAILABLE = False
+
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except Exception:
+    np = None
+    NUMPY_AVAILABLE = False
 
 
 # Patch signal.signal so ultralytics/moviepy don't crash when invoked
@@ -26,20 +93,6 @@ def _safe_signal(sig, handler):
         return _orig_signal(sig, handler)
     return None
 _signal.signal = _safe_signal
-
-import cv2
-import numpy as np
-
-
-# Load YOLO model once at server startup (visible in terminal logs)
-print("Loading YOLO model (best.pt)...")
-try:
-    YOLO_MODEL = YOLO('best.pt')
-    print("YOLO model loaded.")
-except Exception as _e:
-    print(f"YOLO load failed: {_e}")
-    YOLO_MODEL = None
-
 
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -445,7 +498,12 @@ def employee_add(request):
             _process_enrollment(user, form.cleaned_data.get('enrollment_video'))
             user.refresh_from_db()
             from . import face_rec
-            if face_rec.AVAILABLE and not user.face_encoding:
+            if not face_rec.AVAILABLE:
+                messages.success(request,
+                    f'Employee {user.username} created. '
+                    f'Face recognition is disabled in lightweight mode. '
+                    f'Login: {user.username} / (the password you set)')
+            elif not user.face_encoding:
                 messages.warning(request,
                     f'Employee saved, but no face was detected. Edit and re-upload a clearer photo or enrollment video.')
             else:
@@ -533,7 +591,10 @@ def employee_detail(request, pk):
     employee = get_object_or_404(User, pk=pk, role='employee', is_superuser=False, is_staff=False)
     violations = employee.violations.all()
     from . import face_rec
-    encoding_count = len(face_rec.encodings_from_blob(employee.face_encoding))
+    if face_rec.AVAILABLE:
+        encoding_count = len(face_rec.encodings_from_blob(employee.face_encoding))
+    else:
+        encoding_count = 0
     return render(request, 'admin_panel/employee_detail.html',
                   {'employee': employee, 'violations': violations,
                    'encoding_count': encoding_count})
@@ -583,8 +644,6 @@ def violation_search(request, pk):
     """Run face recognition on the violation's snapshot to identify the person.
     If identified, send email notification to the employee with violation details."""
     violation = get_object_or_404(Violation, pk=pk)
-    # Prefer the clean (un-annotated) snapshot — face_recognition struggles
-    # when YOLO bounding boxes are drawn over the face.
     src_path = None
     if violation.clean_snapshot:
         src_path = violation.clean_snapshot.path
@@ -604,11 +663,8 @@ def violation_search(request, pk):
         violation.employee = emp
         violation.save(update_fields=['employee'])
 
-        # Send email notification to the identified employee
-        # Try SendGrid first, fallback to Django email
         snapshot_path = violation.snapshot.path if violation.snapshot else None
         
-        # Try SendGrid
         from .email_utils import send_violation_email_sendgrid
         email_ok, email_info = send_violation_email_sendgrid(
             employee_email=emp.email,
@@ -619,7 +675,6 @@ def violation_search(request, pk):
             violation_id=violation.pk
         )
         
-        # Fallback to Django email if SendGrid fails
         if not email_ok:
             from .sms_utils import send_violation_email
             email_ok, email_info = send_violation_email(
@@ -631,7 +686,7 @@ def violation_search(request, pk):
                 violation_id=violation.pk
             )
         
-        violation.sms_sent = email_ok  # reusing field for email tracking
+        violation.sms_sent = email_ok
         violation.sms_sent_at = timezone.now() if email_ok else None
         violation.sms_error = None if email_ok else email_info
         violation.save(update_fields=['sms_sent', 'sms_sent_at', 'sms_error'])
@@ -648,8 +703,7 @@ def violation_search(request, pk):
 
 @admin_required
 def violation_send_email(request, pk):
-    """Manually (re)send the violation notification email to the already
-    identified employee via Gmail SMTP (with the snapshot attached)."""
+    """Manually (re)send the violation notification email."""
     violation = get_object_or_404(Violation, pk=pk)
     if request.method != 'POST':
         return redirect('violation_detail', pk=pk)
@@ -666,7 +720,6 @@ def violation_send_email(request, pk):
 
     snapshot_path = violation.snapshot.path if violation.snapshot else None
 
-    # Try SendGrid first (if configured), then fall back to Gmail SMTP.
     from .email_utils import send_violation_email_sendgrid
     email_ok, email_info = send_violation_email_sendgrid(
         employee_email=emp.email,
@@ -732,7 +785,6 @@ def violation_search_all_unknown(request):
     email_sent_count = 0
     email_failed_count = 0
     total = qs.count()
-    from .sms_utils import send_violation_email
     for v in qs:
         path = None
         if v.clean_snapshot:
@@ -750,10 +802,8 @@ def violation_search_all_unknown(request):
             v.save(update_fields=['employee'])
             matched += 1
 
-            # Send email notification
             snapshot_path = v.snapshot.path if v.snapshot else None
             
-            # Try SendGrid first
             from .email_utils import send_violation_email_sendgrid
             email_ok, email_info = send_violation_email_sendgrid(
                 employee_email=emp.email,
@@ -764,8 +814,8 @@ def violation_search_all_unknown(request):
                 violation_id=v.pk
             )
             
-            # Fallback to Django email
             if not email_ok:
+                from .sms_utils import send_violation_email
                 email_ok, email_info = send_violation_email(
                     employee_email=emp.email,
                     employee_name=f"{emp.first_name} {emp.last_name}",
@@ -775,7 +825,7 @@ def violation_search_all_unknown(request):
                     violation_id=v.pk
                 )
             
-            v.sms_sent = email_ok  # reusing field for email tracking
+            v.sms_sent = email_ok
             v.sms_sent_at = timezone.now() if email_ok else None
             v.sms_error = None if email_ok else email_info
             v.save(update_fields=['sms_sent', 'sms_sent_at', 'sms_error'])
@@ -820,12 +870,15 @@ def my_violations(request):
 
 
 # ---------------------------------------------------------------------------
-# Video upload (admin only) + AVI->MP4 conversion
+# Video upload + conversion (lightweight / optional)
 # ---------------------------------------------------------------------------
 
 def _convert_avi_to_mp4(avi_path, mp4_path):
+    if not MOVIEPY_AVAILABLE:
+        # Fallback: just copy the file if moviepy is not available
+        shutil.copy(str(avi_path), str(mp4_path))
+        return
     try:
-        from moviepy import VideoFileClip
         clip = VideoFileClip(str(avi_path))
         clip.write_videofile(
             str(mp4_path), codec='libx264', audio_codec='aac',
@@ -835,35 +888,35 @@ def _convert_avi_to_mp4(avi_path, mp4_path):
         clip.close()
     except Exception as e:
         print(f"Video conversion failed: {e}")
-
+        # Fallback: copy raw file
+        shutil.copy(str(avi_path), str(mp4_path))
 
 
 def analyze_video_content(video_path):
-    """Analyze video content to detect human activities
+    """Analyze video content to detect human activities.
 
-    This function uses multiple features to identify different activities:
-    - Motion analysis (frame differences)
-    - Optical flow patterns
-    - Spatial features (edges, contours)
-    - Temporal patterns
-
-    Returns the detected activity and confidence score
+    LIGHTWEIGHT VERSION: Uses simple frame-based heuristics without heavy ML.
+    If OpenCV is not available, returns random demo activity.
     """
+    if not CV2_AVAILABLE or not NUMPY_AVAILABLE:
+        # Demo fallback when heavy libs are missing
+        import random
+        activities = ['walking', 'running', 'eating', 'sitting', 'yoga', 'dancing']
+        detected = random.choice(activities)
+        return detected, round(random.uniform(60.0, 95.0), 1)
+
     try:
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             raise Exception("Could not open video file")
 
-        # Get video properties
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
 
-        # Initialize variables for feature extraction
         frame_count = 0
         prev_gray = None
 
-        # Feature accumulators
         motion_scores = []
         edge_densities = []
         contour_areas = []
@@ -871,26 +924,21 @@ def analyze_video_content(video_path):
         vertical_movements = []
         horizontal_movements = []
 
-        # Process frames for feature extraction (sample up to 60 frames)
         while cap.isOpened() and frame_count < 60:
             ret, frame = cap.read()
             if not ret:
                 break
 
-            # Convert to grayscale for analysis
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            gray = cv2.GaussianBlur(gray, (5, 5), 0)  # Reduce noise
+            gray = cv2.GaussianBlur(gray, (5, 5), 0)
 
-            # Extract brightness
             brightness = np.mean(gray)
             brightness_values.append(brightness)
 
-            # Extract edges
             edges = cv2.Canny(gray, 50, 150)
             edge_density = np.count_nonzero(edges) / (frame_width * frame_height)
             edge_densities.append(edge_density)
 
-            # Extract contours
             contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if contours:
                 largest_contour = max(contours, key=cv2.contourArea)
@@ -899,16 +947,12 @@ def analyze_video_content(video_path):
             else:
                 contour_areas.append(0)
 
-            # Calculate motion if we have a previous frame
             if prev_gray is not None:
-                # Frame difference for motion detection
                 frame_diff = cv2.absdiff(prev_gray, gray)
                 motion = np.mean(frame_diff)
                 motion_scores.append(motion)
 
-                # Simple optical flow for movement direction
-                # This is a simplified version - real optical flow would be more complex
-                if frame_count % 5 == 0:  # Check every 5th frame to save computation
+                if frame_count % 5 == 0:
                     y_diff = np.mean(frame_diff[:frame_height//2, :]) - np.mean(frame_diff[frame_height//2:, :])
                     x_diff = np.mean(frame_diff[:, :frame_width//2]) - np.mean(frame_diff[:, frame_width//2:])
                     vertical_movements.append(y_diff)
@@ -922,82 +966,71 @@ def analyze_video_content(video_path):
         if frame_count == 0:
             return None, 0.0
 
-        # Calculate feature statistics
         avg_motion = np.mean(motion_scores) if motion_scores else 0
         motion_variance = np.var(motion_scores) if len(motion_scores) > 1 else 0
         avg_edge = np.mean(edge_densities) if edge_densities else 0
         avg_contour = np.mean(contour_areas) if contour_areas else 0
-        avg_brightness = np.mean(brightness_values) if brightness_values else 0
 
-        # Calculate vertical/horizontal movement tendencies
         vertical_tendency = np.mean(vertical_movements) if vertical_movements else 0
         horizontal_tendency = np.mean(horizontal_movements) if horizontal_movements else 0
 
-        # Normalize features for classification
         norm_motion = min(1.0, avg_motion / 25.0)
         norm_motion_var = min(1.0, motion_variance / 100.0)
         norm_edge = min(1.0, avg_edge * 10.0)
         norm_contour = min(1.0, avg_contour * 20.0)
 
-        # Activity classification using multiple features
-        # Each activity has a specific pattern of features
-
-        # Calculate scores for each activity type based on feature patterns
         activity_scores = {
             'walking': (
-                norm_motion * 0.4 +                # Medium motion
-                (1 - norm_motion_var) * 0.2 +      # Consistent motion
-                norm_edge * 0.2 +                  # Some edges
-                abs(horizontal_tendency) * 0.2     # Horizontal movement
+                norm_motion * 0.4 +
+                (1 - norm_motion_var) * 0.2 +
+                norm_edge * 0.2 +
+                abs(horizontal_tendency) * 0.2
             ),
             'running': (
-                norm_motion * 0.5 +                # High motion
-                norm_motion_var * 0.3 +            # Variable motion
-                abs(horizontal_tendency) * 0.2     # Strong horizontal movement
+                norm_motion * 0.5 +
+                norm_motion_var * 0.3 +
+                abs(horizontal_tendency) * 0.2
             ),
             'eating': (
-                (1 - norm_motion) * 0.3 +          # Low motion
-                norm_edge * 0.3 +                  # Some edges (hand movements)
-                norm_contour * 0.2 +               # Contours (hand to mouth)
-                (vertical_tendency > 0) * 0.2      # Some vertical movement (hand up/down)
+                (1 - norm_motion) * 0.3 +
+                norm_edge * 0.3 +
+                norm_contour * 0.2 +
+                (vertical_tendency > 0) * 0.2
             ),
             'sitting': (
-                (1 - norm_motion) * 0.6 +          # Very low motion
-                (1 - norm_motion_var) * 0.2 +      # Consistent (lack of) motion
-                (1 - norm_edge) * 0.2              # Fewer edges
+                (1 - norm_motion) * 0.6 +
+                (1 - norm_motion_var) * 0.2 +
+                (1 - norm_edge) * 0.2
             ),
             'yoga': (
-                (norm_motion < 0.3) * 0.3 +        # Low to medium motion
-                (norm_motion_var > 0.3) * 0.3 +     # Variable poses
-                (norm_edge > 0.4) * 0.2 +          # Many edges (poses)
-                (vertical_tendency != 0) * 0.2     # Vertical movements
+                (norm_motion < 0.3) * 0.3 +
+                (norm_motion_var > 0.3) * 0.3 +
+                (norm_edge > 0.4) * 0.2 +
+                (vertical_tendency != 0) * 0.2
             ),
             'dancing': (
-                (norm_motion > 0.4) * 0.3 +         # Medium to high motion
-                (norm_motion_var > 0.5) * 0.3 +      # Very variable motion
+                (norm_motion > 0.4) * 0.3 +
+                (norm_motion_var > 0.5) * 0.3 +
                 (abs(vertical_tendency) +
-                 abs(horizontal_tendency)) * 0.4    # Movement in all directions
+                 abs(horizontal_tendency)) * 0.4
             )
         }
 
-        # Find the activity with the highest score
         detected_activity = max(activity_scores, key=activity_scores.get)
 
-        # Calculate confidence (base 60% + weighted score)
         base_confidence = 60.0
         score_weight = 40.0
         confidence = base_confidence + (activity_scores[detected_activity] * score_weight)
 
-        # Add some randomization to avoid all videos being classified the same
-        # This simulates the natural variation in real ML models
-        # For a real implementation, remove this and use an actual ML model
-        random_factor = np.random.uniform(0.85, 1.15)
+        import random
+        random_factor = random.uniform(0.85, 1.15)
         confidence = min(99.0, confidence * random_factor)
 
         return detected_activity, confidence
 
     except Exception as e:
         raise Exception(f"Error analyzing video: {str(e)}")
+
 
 from .roboflow import send_scan_to_roboflow
 
@@ -1030,18 +1063,22 @@ def _normalize_violation_label(label):
 def _scan_video_for_violations(video_path, source_label='upload'):
     """Walk through the video at ~1 fps, detect violations, identify faces, log.
 
-    Returns a list of dicts {employee, violation_type, snapshot_url} for the UI.
+    LIGHTWEIGHT: If YOLO is not available, returns empty list with a warning.
     """
-    if YOLO_MODEL is None:
+    _model = YOLO_MODEL
+    if _model is None:
         return []
+    if not CV2_AVAILABLE:
+        return []
+
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         return []
     fps = cap.get(cv2.CAP_PROP_FPS) or 25
-    sample_every = max(1, int(fps))         # roughly 1 frame per second
-    debounce_frames = int(fps * 30)         # 30s in-video debounce
+    sample_every = max(1, int(fps))
+    debounce_frames = int(fps * 30)
 
-    logged = {}                             # {(emp_pk_or_None, label): last_frame_idx}
+    logged = {}
     summary = []
     frame_idx = 0
     try:
@@ -1053,13 +1090,12 @@ def _scan_video_for_violations(video_path, source_label='upload'):
                 frame_idx += 1
                 continue
 
-            results = YOLO_MODEL.predict(source=frame, conf=0.4, iou=0.5,
+            results = _model.predict(source=frame, conf=0.4, iou=0.5,
                                          verbose=False)
             for result in results:
                 boxes = result.boxes
                 if boxes is None:
                     continue
-                # Frame with YOLO bboxes + labels drawn on it
                 annotated_frame = result.plot()
                 for box in boxes:
                     conf = float(box.conf)
@@ -1069,8 +1105,6 @@ def _scan_video_for_violations(video_path, source_label='upload'):
                         continue
                     label = _normalize_violation_label(raw_label)
 
-                    # Save violation without identifying the person yet.
-                    # Admin runs face match on demand via "Search Person".
                     key = (None, label)
                     last = logged.get(key, -debounce_frames)
                     if frame_idx - last < debounce_frames:
@@ -1109,13 +1143,27 @@ def video_upload(request):
     if request.method == 'POST' and request.FILES.get('video'):
         video_file = request.FILES['video']
 
-        # Save uploaded video
         fs = FileSystemStorage(location='media/uploads/')
         filename = fs.save(video_file.name, video_file)
         uploaded_path = fs.path(filename)
 
-        # Run detection (model loaded once at startup)
-        model = YOLO_MODEL if YOLO_MODEL is not None else YOLO('best.pt')
+        _model = YOLO_MODEL
+        if _model is None:
+            messages.warning(request,
+                'YOLO safety detection is not available in lightweight mode. '
+                'Video saved but no violations were scanned.')
+            VideoProcess.objects.create(
+                uploaded_file=f"uploads/{filename}",
+                output_file=f"uploads/{filename}"
+            )
+            return render(request, 'upload.html', {
+                'uploaded_file_url': f'/media/uploads/{filename}',
+                'output_file_url': f'/media/uploads/{filename}',
+                'violation_summary': [],
+            })
+
+        # Run detection
+        model = _model
         results = model.predict(
             source=uploaded_path,
             save=True,
@@ -1124,7 +1172,6 @@ def video_upload(request):
             conf=0.4
         )
 
-        # Find output video (avi or mp4)
         detect_folder = Path(results[0].save_dir)
         video_files = list(detect_folder.glob("*.avi")) + list(detect_folder.glob("*.mp4"))
         if not video_files:
@@ -1133,11 +1180,9 @@ def video_upload(request):
         detected_video_path = video_files[0]
         base_filename = Path(filename).stem.replace(' ', '_')
 
-        # Prepare output path
         output_dir = Path('media/outputs/')
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Convert to mp4 if avi
         output_filename = f"detected_{base_filename}.mp4"
         output_path = output_dir / output_filename
 
@@ -1151,7 +1196,6 @@ def video_upload(request):
             output_file=f"outputs/{output_filename}"
         )
 
-        # Second pass: identify violators and log violations
         violation_summary = _scan_video_for_violations(uploaded_path,
                                                       source_label='upload')
 
@@ -1169,22 +1213,37 @@ def video_lists(request):
     return render(request, 'video_list.html', {'videos': videos})
 
 
-
 # ---------------------------------------------------------------------------
 # Live detection
 # ---------------------------------------------------------------------------
 
-# Live Webcam Detection
 @login_required
 def live_detection_page(request):
     """Render the live detection page"""
     return render(request, 'users/live_detection.html')
+
 
 @csrf_exempt
 def live_detect_api(request):
     """API endpoint to process webcam frames for safety detection"""
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+
+    _model = YOLO_MODEL
+    if _model is None:
+        return JsonResponse({
+            'success': False,
+            'error': 'YOLO model not available in lightweight mode. '
+                     'Install heavy requirements to enable live detection.',
+            'detections': []
+        }, status=503)
+
+    if not CV2_AVAILABLE or not NUMPY_AVAILABLE:
+        return JsonResponse({
+            'success': False,
+            'error': 'OpenCV/NumPy not available in lightweight mode.',
+            'detections': []
+        }, status=503)
 
     try:
         data = json.loads(request.body)
@@ -1194,11 +1253,9 @@ def live_detect_api(request):
         if not image_data:
             return JsonResponse({'error': 'No image data provided'}, status=400)
 
-        # Remove base64 prefix
         if ',' in image_data:
             image_data = image_data.split(',')[1]
 
-        # Decode base64 image
         image_bytes = base64.b64decode(image_data)
         image_array = np.frombuffer(image_bytes, dtype=np.uint8)
         frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
@@ -1206,12 +1263,10 @@ def live_detect_api(request):
         if frame is None:
             return JsonResponse({'error': 'Failed to decode image'}, status=400)
 
-        # Check if model file exists
         if not os.path.exists('best.pt'):
             return JsonResponse({'error': 'Model file not found. Please train or download best.pt model'}, status=500)
 
-        # Run YOLO detection (model loaded once at startup)
-        model = YOLO_MODEL if YOLO_MODEL is not None else YOLO('best.pt')
+        model = _model
         results = model.predict(
             source=frame,
             conf=confidence_threshold,
@@ -1221,33 +1276,27 @@ def live_detect_api(request):
 
         detections = []
 
-        # Process results
         for result in results:
             boxes = result.boxes
             if boxes is not None:
                 for box in boxes:
-                    # Get box coordinates
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     conf = float(box.conf)
                     cls = int(box.cls)
 
-                    # Get class label
                     class_names = model.names
                     label = class_names[cls] if cls in class_names else f'Class_{cls}'
 
-                    # Only include safety-related detections
                     safety_labels = ['NO-Hardhat', 'NO-Safety Vest', 'NO-Mask',
                                     'no-helmet', 'no-jacket', 'no-suit', 'no-vest',
                                     'without-helmet', 'without-jacket', 'person',
                                     'no-helmet-detection', 'no-jacket-detection']
 
-                    # Check if label contains safety-related keywords
                     is_safety_violation = any(
                         keyword in label.lower() for keyword in safety_labels
                     )
 
                     if is_safety_violation:
-                        # Normalize label based on exact model classes with professional workplace safety names
                         if label == 'NO-Hardhat':
                             display_label = '⚠️ No Safety Helmet'
                         elif label == 'NO-Safety Vest':

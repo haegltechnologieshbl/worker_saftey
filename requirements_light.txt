@@ -1,0 +1,10 @@
+# Lightweight requirements for shared hosting
+# REMOVED: torch, torchvision, ultralytics, dlib, face_recognition, moviepy, opencv-python
+
+Django==4.2.7
+django-crispy-forms==2.0
+crispy-bootstrap5==2023.10
+Pillow==10.0.0
+PyYAML==6.0.0
+python-dotenv==1.0.0
+numpy==1.24.0

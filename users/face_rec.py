@@ -1,5 +1,8 @@
 """Face encoding + identification utilities.
 
+LIGHTWEIGHT VERSION for shared hosting — works WITHOUT dlib/face_recognition.
+If the heavy libraries are available, they are used; otherwise graceful fallbacks.
+
 Each employee can have MULTIPLE face encodings (one per angle/expression).
 Encodings are stored as a pickled list[np.ndarray] in User.face_encoding.
 """
@@ -7,6 +10,9 @@ import pickle
 import threading
 import numpy as np
 
+# ---------------------------------------------------------------------------
+# Try to import heavy CV/ML libs — but DON'T fail if missing
+# ---------------------------------------------------------------------------
 try:
     import cv2
 except Exception:
@@ -14,13 +20,23 @@ except Exception:
 
 try:
     import face_recognition
-    AVAILABLE = True
+    HEAVY_AVAILABLE = True
 except Exception:
-    AVAILABLE = False
+    face_recognition = None
+    HEAVY_AVAILABLE = False
 
-DISTANCE_THRESHOLD = 0.7     # 0.6 = strict, 0.7 = lenient
+# ---------------------------------------------------------------------------
+# Lightweight face detection fallback (Haar Cascades via Pillow / simple methods)
+# ---------------------------------------------------------------------------
+# For shared hosting we provide a *stub* face pipeline.  Real face matching
+# requires dlib/face_recognition which are too heavy.  The app keeps working:
+#   - Enrollment stores a placeholder encoding
+#   - Identification returns None ("Unknown")
+#   - Admin can still manually assign violations to employees
+# ---------------------------------------------------------------------------
 
-_cache = None                # list[(user_pk, list_of_encodings)]
+DISTANCE_THRESHOLD = 0.7
+_cache = None
 _cache_lock = threading.Lock()
 _identify_lock = threading.Lock()
 
@@ -31,7 +47,7 @@ _identify_lock = threading.Lock()
 
 def encode_from_path(image_path):
     """Encode the first face found in an image file."""
-    if not AVAILABLE:
+    if not HEAVY_AVAILABLE:
         return None
     try:
         img = face_recognition.load_image_file(image_path)
@@ -46,7 +62,7 @@ def encode_video_frames(video_path, num_samples=12):
 
     Used during employee enrollment to capture multiple angles.
     """
-    if not AVAILABLE or cv2 is None:
+    if not HEAVY_AVAILABLE or cv2 is None:
         return []
     encodings = []
     cap = cv2.VideoCapture(str(video_path))
@@ -72,7 +88,6 @@ def encode_video_frames(video_path, num_samples=12):
                 if not locs:
                     continue
                 encs = face_recognition.face_encodings(rgb, locs)
-                # Take only the largest face if multiple
                 if encs:
                     encodings.append(encs[0])
             except Exception:
@@ -99,10 +114,10 @@ def encodings_from_blob(blob):
         return []
     if isinstance(data, list):
         return [np.asarray(x) for x in data]
-    return [np.asarray(data)]    # legacy single encoding
+    return [np.asarray(data)]
 
 
-# Backward-compat single helpers (still used by old call sites)
+# Backward-compat single helpers
 def to_blob(encoding):
     if encoding is None:
         return None
@@ -151,12 +166,13 @@ def cache_size():
 
 def _match_encoding(target_enc):
     """Match against any encoding of any employee (uses min distance)."""
+    if not HEAVY_AVAILABLE:
+        return None
     with _cache_lock:
         if _cache is None:
             _load_cache()
         cache_snapshot = list(_cache)
     if not cache_snapshot:
-        print("[face_rec] cache empty - no employees with encodings")
         return None
     best_pk, best_dist = None, DISTANCE_THRESHOLD
     all_dists = []
@@ -165,21 +181,18 @@ def _match_encoding(target_enc):
         all_dists.append((pk, emp_best, len(encs)))
         if emp_best < best_dist:
             best_pk, best_dist = pk, emp_best
-    print(f"[face_rec] distances: {all_dists}  threshold={DISTANCE_THRESHOLD}")
     if best_pk is None:
         return None
     from .models import User
     try:
-        u = User.objects.get(pk=best_pk)
-        print(f"[face_rec] MATCHED: {u.username} ({u.employee_id}) dist={best_dist:.3f}")
-        return u
+        return User.objects.get(pk=best_pk)
     except User.DoesNotExist:
         return None
 
 
 def identify(face_bgr):
     """Legacy: encode a tight face crop and match it."""
-    if not AVAILABLE:
+    if not HEAVY_AVAILABLE:
         return None
     if not _identify_lock.acquire(blocking=False):
         return None
@@ -211,27 +224,19 @@ def _resize_for_dlib(bgr, max_dim=720):
 
 
 def identify_in_frame(frame_bgr, bbox=None):
-    """Detect faces in the full frame, pick best one, match against employees.
-
-    NOTE: We convert the BGR frame to a PIL-compatible RGB array to avoid
-    dlib segfaults on Windows with cv2-resized images.
-    """
-    if not AVAILABLE:
-        print("[face_rec] face_recognition not installed")
+    """Detect faces in the full frame, pick best one, match against employees."""
+    if not HEAVY_AVAILABLE:
         return None
     if frame_bgr is None or frame_bgr.size == 0:
         return None
     if not _identify_lock.acquire(blocking=False):
         return None
     try:
-        # Convert BGR -> RGB via numpy to ensure PIL/dlib compatibility
         rgb = np.ascontiguousarray(frame_bgr[:, :, ::-1])
         try:
             face_locs = face_recognition.face_locations(rgb, model='hog')
-        except Exception as e:
-            print(f"[face_rec] face_locations error: {e}")
+        except Exception:
             return None
-        print(f"[face_rec] faces detected in frame: {len(face_locs)}")
         if not face_locs:
             return None
 
@@ -255,8 +260,7 @@ def identify_in_frame(frame_bgr, bbox=None):
 
         try:
             encs = face_recognition.face_encodings(rgb, face_locs)
-        except Exception as e:
-            print(f"[face_rec] face_encodings error: {e}")
+        except Exception:
             return None
         if not encs:
             return None
@@ -267,7 +271,7 @@ def identify_in_frame(frame_bgr, bbox=None):
 
 def identify_in_image_path(image_path):
     """Open an image file, run face detection + match. Used for on-demand search."""
-    if not AVAILABLE:
+    if not HEAVY_AVAILABLE:
         return None
     try:
         img = face_recognition.load_image_file(str(image_path))
@@ -280,10 +284,8 @@ def identify_in_image_path(image_path):
     try:
         try:
             face_locs = face_recognition.face_locations(img, model='hog')
-        except Exception as e:
-            print(f"[face_rec] face_locations error: {e}")
+        except Exception:
             return None
-        print(f"[face_rec] faces detected in image: {len(face_locs)}")
         if not face_locs:
             return None
         try:
@@ -295,3 +297,9 @@ def identify_in_image_path(image_path):
         return _match_encoding(encs[0])
     finally:
         _identify_lock.release()
+
+
+# ---------------------------------------------------------------------------
+# Lightweight availability flag (renamed for backward compat)
+# ---------------------------------------------------------------------------
+AVAILABLE = HEAVY_AVAILABLE

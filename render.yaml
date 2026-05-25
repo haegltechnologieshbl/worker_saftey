@@ -1,0 +1,22 @@
+# Render.com deployment configuration
+# Deploy to: https://render.com
+
+services:
+  - type: web
+    name: har-safety-detection
+    runtime: docker
+    plan: standard
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DISABLE_ML
+        value: "0"
+      - key: PYTHON_VERSION
+        value: "3.10"
+    disk:
+      name: media
+      mountPath: /app/media
+      sizeGB: 5
